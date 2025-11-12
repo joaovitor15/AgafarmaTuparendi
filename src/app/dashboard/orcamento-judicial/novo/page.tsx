@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,25 +8,48 @@ import type { Orcamento } from '@/types/orcamento';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { addOrcamento } from '@/services/orcamentoService';
 
 export default function NovoOrcamentoPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const handleSaveOrcamento = (orcamentoData: Omit<Orcamento, 'id'>) => {
-    const orcamentoComId = { ...orcamentoData, id: uuidv4() };
-    
-    // Em uma implementação real, isso salvaria no Firebase
-    console.log('Salvando novo orçamento:', orcamentoComId);
+  const handleSaveOrcamento = async (orcamentoData: Omit<Orcamento, 'id'>) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Autenticação',
+        description: 'Você precisa estar logado para salvar um orçamento.',
+      });
+      return;
+    }
 
-    // Simula a lógica de salvamento e redirecionamento
-    toast({
-      title: 'Orçamento Criado!',
-      description: 'O novo orçamento foi salvo com sucesso.',
-    });
-    
-    // Redireciona para o dashboard após salvar
-    router.push('/dashboard/orcamento-judicial');
+    const orcamentoComId: Orcamento = { 
+      ...orcamentoData, 
+      id: uuidv4(),
+      usuarioId: user.uid,
+      dataCriacao: new Date().toISOString(),
+      dataUltimaEdicao: new Date().toISOString(),
+      status: 'ativo',
+    };
+
+    try {
+      await addOrcamento(user.uid, orcamentoComId);
+      toast({
+        title: 'Orçamento Criado!',
+        description: 'O novo orçamento foi salvo com sucesso.',
+      });
+      router.push('/dashboard/orcamento-judicial');
+    } catch (error) {
+      console.error("Erro ao salvar orçamento: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Salvar',
+        description: 'Não foi possível salvar o orçamento. Tente novamente.',
+      });
+    }
   };
 
 

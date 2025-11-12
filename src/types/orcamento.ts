@@ -13,7 +13,11 @@ export interface Paciente {
 }
 
 export interface Orcamento {
-  id?: string; // Opcional até ser salvo
+  id: string;
+  usuarioId: string;
   paciente: Paciente;
   medicamentos: Medicamento[];
+  status: 'ativo' | 'arquivado';
+  dataCriacao: string;
+  dataUltimaEdicao: string;
 }

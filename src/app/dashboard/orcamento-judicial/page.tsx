@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
-import { FileDown, Pencil, Trash2, PlusCircle, Settings, Search } from 'lucide-react';
+import { FileDown, Pencil, Trash2, PlusCircle, Settings, Search, Loader2 } from 'lucide-react';
 import type { Orcamento } from '@/types/orcamento';
 import {
   AlertDialog,
@@ -18,13 +18,50 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OrcamentoJudicialDashboardPage() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
-  const { toast } = useToast(); // Fictício, pois useToast não está no escopo, mas representando a ideia.
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    };
+
+    const q = query(collection(db, `users/${user.uid}/orcamentoJudicial`));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const orcamentosData: Orcamento[] = [];
+      querySnapshot.forEach((doc) => {
+        orcamentosData.push({ id: doc.id, ...doc.data() } as Orcamento);
+      });
+      setOrcamentos(orcamentosData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Erro ao buscar orçamentos: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar dados",
+        description: "Não foi possível buscar os orçamentos.",
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
 
   const handleDelete = (id: string) => {
-    setOrcamentos(orcamentos.filter(o => o.id !== id));
+    // Lógica de exclusão no Firebase a ser implementada
+    console.log("Excluir orçamento com ID:", id);
+    // setOrcamentos(orcamentos.filter(o => o.id !== id));
     // toast({
     //   variant: 'destructive',
     //   title: 'Orçamento Excluído!',
@@ -43,13 +80,8 @@ export default function OrcamentoJudicialDashboardPage() {
               Novo Orçamento
             </Button>
           </Link>
-          <Button variant="outline" size="icon">
-            <Settings className="h-4 w-4" />
-          </Button>
         </div>
       </div>
-
-      {/* TODO: Filtros e KPIs */}
 
       <Card>
           <CardHeader>
@@ -58,7 +90,11 @@ export default function OrcamentoJudicialDashboardPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <Table>
-                <TableCaption>{orcamentos.length === 0 ? "Nenhum orçamento criado. Crie um novo!" : "Lista de orçamentos salvos."}</TableCaption>
+                <TableCaption>
+                  {loading && "Carregando orçamentos..."}
+                  {!loading && orcamentos.length === 0 && "Nenhum orçamento criado. Crie um novo!"}
+                  {!loading && orcamentos.length > 0 && "Lista de orçamentos salvos."}
+                </TableCaption>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Paciente</TableHead>
@@ -68,41 +104,56 @@ export default function OrcamentoJudicialDashboardPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {orcamentos.map(orcamento => (
-                        <TableRow key={orcamento.id}>
-                            <TableCell className="font-medium">{orcamento.paciente.identificador}</TableCell>
-                            <TableCell>{orcamento.paciente.cpf || 'N/A'}</TableCell>
-                            <TableCell>{orcamento.medicamentos.length}</TableCell>
-                            <TableCell className="text-right space-x-2">
-                                <Button variant="outline" size="icon" disabled>
-                                    <FileDown className="h-4 w-4" />
-                                </Button>
-                                <Button variant="outline" size="icon" disabled>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="icon">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta ação não pode ser desfeita. Isso excluirá permanentemente o orçamento de
-                                        "{orcamento.paciente.identificador}".
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(orcamento.id!)}>Excluir</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                            </TableCell>
+                    {loading ? (
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={index}>
+                          <TableCell><Skeleton className="h-4 w-[250px]" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Skeleton className="h-8 w-8 inline-block" />
+                            <Skeleton className="h-8 w-8 inline-block" />
+                            <Skeleton className="h-8 w-8 inline-block" />
+                          </TableCell>
                         </TableRow>
-                    ))}
+                      ))
+                    ) : (
+                      orcamentos.map(orcamento => (
+                          <TableRow key={orcamento.id}>
+                              <TableCell className="font-medium">{orcamento.paciente.identificador}</TableCell>
+                              <TableCell>{orcamento.paciente.cpf || 'N/A'}</TableCell>
+                              <TableCell>{orcamento.medicamentos.length}</TableCell>
+                              <TableCell className="text-right space-x-2">
+                                  <Button variant="outline" size="icon" disabled>
+                                      <FileDown className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="outline" size="icon" disabled>
+                                      <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="icon" disabled>
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Esta ação não pode ser desfeita. Isso excluirá permanentemente o orçamento de
+                                          "{orcamento.paciente.identificador}".
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(orcamento.id!)}>Excluir</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                              </TableCell>
+                          </TableRow>
+                      ))
+                    )}
                 </TableBody>
             </Table>
           </CardContent>
@@ -110,8 +161,3 @@ export default function OrcamentoJudicialDashboardPage() {
     </div>
   );
 }
-
-// Mock useToast para evitar erros de compilação.
-const useToast = () => ({
-  toast: (options: any) => console.log('Toast:', options),
-});
