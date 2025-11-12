@@ -33,7 +33,7 @@ export default function OrcamentoJudicialPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div><strong className="text-muted-foreground">Número:</strong> {mockOrcamento.numero}</div>
             <div><strong className="text-muted-foreground">Cliente:</strong> {mockOrcamento.cliente}</div>
-            <div><strong className="text-muted-foreground">Processo:</strong> {mock_orcamento.processo}</div>
+            <div><strong className="text-muted-foreground">Processo:</strong> {mockOrcamento.processo}</div>
             <div><strong className="text-muted-foreground">Valor:</strong> R$ {mockOrcamento.valor.toFixed(2)}</div>
             <div><strong className="text-muted-foreground">Vencimento:</strong> {mockOrcamento.dataVencimento}</div>
           </div>
