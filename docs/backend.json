@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "OrcamentoJudicial": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrcamentoJudicial",
+      "type": "object",
+      "description": "Represents a judicial budget.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrcamentoJudicial entity."
+        },
+        "numero": {
+          "type": "string",
+          "description": "Budget number."
+        },
+        "cliente": {
+          "type": "string",
+          "description": "Client name."
+        },
+        "processo": {
+          "type": "string",
+          "description": "Process number."
+        },
+        "valor": {
+          "type": "number",
+          "description": "Budget value."
+        },
+        "dataVencimento": {
+          "type": "string",
+          "description": "Due date for the budget.",
+          "format": "date-time"
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Description of the budget."
+        }
+      },
+      "required": [
+        "id",
+        "numero",
+        "cliente",
+        "processo",
+        "valor",
+        "dataVencimento",
+        "descricao"
+      ]
+    },
+    "Vencido": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vencido",
+      "type": "object",
+      "description": "Represents an overdue process.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vencido entity."
+        },
+        "numero": {
+          "type": "string",
+          "description": "Process number."
+        },
+        "cliente": {
+          "type": "string",
+          "description": "Client name."
+        },
+        "datavencimento": {
+          "type": "string",
+          "description": "Due date of the process.",
+          "format": "date-time"
+        },
+        "diasVencido": {
+          "type": "number",
+          "description": "Number of days overdue."
+        },
+        "valor": {
+          "type": "number",
+          "description": "Value of the process."
+        }
+      },
+      "required": [
+        "id",
+        "numero",
+        "cliente",
+        "datavencimento",
+        "diasVencido",
+        "valor"
+      ]
+    },
+    "Devolucao": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Devolucao",
+      "type": "object",
+      "description": "Represents a return.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Devolucao entity."
+        },
+        "numero": {
+          "type": "string",
+          "description": "Return number."
+        },
+        "cliente": {
+          "type": "string",
+          "description": "Client name."
+        },
+        "dataDevolvido": {
+          "type": "string",
+          "description": "Date of the return.",
+          "format": "date-time"
+        },
+        "motivo": {
+          "type": "string",
+          "description": "Reason for the return."
+        },
+        "observacoes": {
+          "type": "string",
+          "description": "Observations about the return."
+        }
+      },
+      "required": [
+        "id",
+        "numero",
+        "cliente",
+        "dataDevolvido",
+        "motivo",
+        "observacoes"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/orcamentoJudicial/{orcamentoId}",
+        "definition": {
+          "entityName": "OrcamentoJudicial",
+          "schema": {
+            "$ref": "#/backend/entities/OrcamentoJudicial"
+          },
+          "description": "Stores judicial budget data for a specific user. The 'userId' parameter identifies the owner of the data, providing authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "orcamentoId",
+              "description": "The unique identifier of the judicial budget."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/vencidos/{vencidoId}",
+        "definition": {
+          "entityName": "Vencido",
+          "schema": {
+            "$ref": "#/backend/entities/Vencido"
+          },
+          "description": "Stores overdue process data for a specific user. The 'userId' parameter identifies the owner of the data, providing authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "vencidoId",
+              "description": "The unique identifier of the overdue process."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/devolucao/{devolucaoId}",
+        "definition": {
+          "entityName": "Devolucao",
+          "schema": {
+            "$ref": "#/backend/entities/Devolucao"
+          },
+          "description": "Stores return data for a specific user. The 'userId' parameter identifies the owner of the data, providing authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "devolucaoId",
+              "description": "The unique identifier of the return."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Given the requirements for the Agafarma Tuparendi application, particularly the need to restrict access to only two specific Gmail accounts and the nature of the data being managed (judicial budgets, expired processes, and returns), a path-based ownership structure is most appropriate to ensure simplicity and security. Since all data entities are likely associated with the user, nesting the collections under `/users/{userId}` provides a clear ownership model and eliminates the need for complex security rules involving `get()` calls. This approach inherently supports Authorization Independence. \n\nSpecifically, each collection (`orcamentoJudicial`, `vencidos`, and `devolucao`) will be created as a subcollection of `/users/{userId}`. This means that each user (identified by their `userId`) will have their own set of documents for each entity. This design inherently ensures that only the authorized user can access their respective data. \n\nThe application only supports two authorized users, and these users are validated during authentication. Therefore, we don't need complex role-based access control within Firestore. The security rules will simply check if `request.auth.uid` matches the `userId` in the path.\n\nThis structure supports the required QAPs by:\n\n1.  **Authorization Independence:** No `get()` calls are needed because access is determined solely by the user's ID in the path.\n2.  **Clarity of Intent:** The path structure `users/{userId}/{collectionName}/{documentId}` immediately conveys ownership.\n3.  **Rules are not Filters:** Secure `list` operations are naturally supported because the rules only allow access to documents within the user's own path segment. The data is segregated by user, avoiding the need to filter based on document content.\n\nThe denormalization strategy is applied implicitly by nesting all data under `/users/{userId}`. No explicit denormalization of user data into the documents is needed because the path itself establishes the user's ownership. If further roles or attributes were associated with users, they could be stored in a `/users/{userId}` document and, if needed for authorization in subcollections, denormalized into those subcollections.\n\nThis design assumes all entities are exclusively user-owned. If some data needed to be shared, a different structure (potentially involving a membership map) would be required for those shared entities."
+  }
+}

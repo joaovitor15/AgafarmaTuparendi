@@ -1,0 +1,117 @@
+/**
+ * @fileoverview Firestore Security Rules for Agafarma Tuparendi.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for judicial budgets,
+ * expired processes, and returns. Only the authenticated user who owns the data
+ * (identified by their UID) can create, read, update, or delete it.  There are two
+ * explicitly authorized users who are validated upon authentication.
+ *
+ * Data Structure:
+ * All data is nested under /users/{userId}, with subcollections for each entity:
+ * - /users/{userId}/orcamentoJudicial/{orcamentoId}
+ * - /users/{userId}/vencidos/{vencidoId}
+ * - /users/{userId}/devolucao/{devolucaoId}
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - The rules leverage path-based authorization, eliminating the need for costly `get()` calls.
+ * - No data is shared between users; each user has their own silo of data.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the request is authenticated.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @returns {boolean} True if the user IDs match, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the existing document.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @returns {boolean} True if the user IDs match and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Security rules for the orcamentoJudicial collection under a specific user.
+     * @path /users/{userId}/orcamentoJudicial/{orcamentoId}
+     * @allow (create) User 'user123' can create a new orcamentoJudicial document under /users/user123/orcamentoJudicial/ with a matching ID.
+     * @allow (get) User 'user123' can retrieve an orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @allow (list) User 'user123' can list orcamentoJudicial documents under /users/user123/orcamentoJudicial/.
+     * @allow (update) User 'user123' can update an existing orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @allow (delete) User 'user123' can delete an existing orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @deny (create) User 'user456' cannot create an orcamentoJudicial document under /users/user123/orcamentoJudicial/.
+     * @deny (get) User 'user456' cannot retrieve an orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @deny (update) User 'user456' cannot update an orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @deny (delete) User 'user456' cannot delete an orcamentoJudicial document under /users/user123/orcamentoJudicial/doc123.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/orcamentoJudicial/{orcamentoId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == orcamentoId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for the vencidos collection under a specific user.
+     * @path /users/{userId}/vencidos/{vencidoId}
+     * @allow (create) User 'user123' can create a new vencidos document under /users/user123/vencidos/ with a matching ID.
+     * @allow (get) User 'user123' can retrieve a vencidos document under /users/user123/vencidos/doc123.
+     * @allow (list) User 'user123' can list vencidos documents under /users/user123/vencidos/.
+     * @allow (update) User 'user123' can update an existing vencidos document under /users/user123/vencidos/doc123.
+     * @allow (delete) User 'user123' can delete an existing vencidos document under /users/user123/vencidos/doc123.
+     * @deny (create) User 'user456' cannot create a vencidos document under /users/user123/vencidos/.
+     * @deny (get) User 'user456' cannot retrieve a vencidos document under /users/user123/vencidos/doc123.
+     * @deny (update) User 'user456' cannot update a vencidos document under /users/user123/vencidos/doc123.
+     * @deny (delete) User 'user456' cannot delete a vencidos document under /users/user123/vencidos/doc123.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/vencidos/{vencidoId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == vencidoId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for the devolucao collection under a specific user.
+     * @path /users/{userId}/devolucao/{devolucaoId}
+     * @allow (create) User 'user123' can create a new devolucao document under /users/user123/devolucao/ with a matching ID.
+     * @allow (get) User 'user123' can retrieve a devolucao document under /users/user123/devolucao/doc123.
+     * @allow (list) User 'user123' can list devolucao documents under /users/user123/devolucao/.
+     * @allow (update) User 'user123' can update an existing devolucao document under /users/user123/devolucao/doc123.
+     * @allow (delete) User 'user123' can delete an existing devolucao document under /users/user123/devolucao/doc123.
+     * @deny (create) User 'user456' cannot create a devolucao document under /users/user123/devolucao/.
+     * @deny (get) User 'user456' cannot retrieve a devolucao document under /users/user123/devolucao/doc123.
+     * @deny (update) User 'user456' cannot update a devolucao document under /users/user123/devolucao/doc123.
+     * @deny (delete) User 'user456' cannot delete a devolucao document under /users/user123/devolucao/doc123.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId}/devolucao/{devolucaoId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == devolucaoId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
