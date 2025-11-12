@@ -4,6 +4,7 @@
 export const AUTHORIZED_EMAILS = [
   'agafarmatuparendi438@gmai.com',
   'agafarmatuparendipdvs@gmail.com',
+  'joaovitormachry@gmail.com'
 ];
 
 export const isEmailAuthorized = (email: string | null | undefined): boolean => {
