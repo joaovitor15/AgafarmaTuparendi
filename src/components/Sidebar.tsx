@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { AgafarmaLogo } from './AgafarmaLogo';
 
 const navItems = [
   { href: '/dashboard/orcamento-judicial', icon: ClipboardList, label: messages.sidebar.orcamento },
@@ -16,13 +17,16 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { signOutUser, loading, user } = useAuth();
+  const { signOutUser, loading } = useAuth();
   const pathname = usePathname();
 
   return (
     <TooltipProvider delayDuration={100}>
-      <aside className="flex flex-col items-center gap-y-8 bg-card border-r w-32 p-4">
-        <nav className="flex flex-col items-center gap-6 w-full mt-4">
+      <aside className="flex w-20 flex-col items-center gap-y-4 border-r bg-card p-2">
+        <div className="p-2">
+            <AgafarmaLogo className="h-10 w-10 text-primary" />
+        </div>
+        <nav className="flex flex-col items-center gap-2 w-full mt-4">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
@@ -31,14 +35,15 @@ export function Sidebar() {
                   <Link href={item.href} legacyBehavior>
                     <a
                       className={cn(
-                        'flex flex-col items-center justify-center w-20 h-20 rounded-full transition-all duration-300 ease-in-out transform hover:scale-110 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
+                        'flex flex-col items-center justify-center w-16 h-16 rounded-lg transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-inner'
-                          : 'bg-background hover:bg-muted'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       )}
                       aria-label={item.label}
                     >
-                      <item.icon className="h-8 w-8" />
+                      <item.icon className="h-6 w-6" />
+                      <span className="mt-1 text-xs">{item.label}</span>
                     </a>
                   </Link>
                 </TooltipTrigger>
@@ -49,17 +54,11 @@ export function Sidebar() {
             );
           })}
         </nav>
-        <div className="mt-auto flex flex-col items-center gap-4">
-            {user && (
-                 <div className="text-center">
-                    <p className="text-sm font-medium text-foreground truncate max-w-[100px]">{user.displayName}</p>
-                    <p className="text-xs text-muted-foreground truncate max-w-[100px]">{user.email}</p>
-                </div>
-            )}
+        <div className="mt-auto flex flex-col items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={signOutUser} disabled={loading} className="w-16 h-16 rounded-full">
-                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <LogOut className="h-6 w-6" />}
+                <Button variant="ghost" size="icon" onClick={signOutUser} disabled={loading} className="h-12 w-12 rounded-lg">
+                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
                 </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
