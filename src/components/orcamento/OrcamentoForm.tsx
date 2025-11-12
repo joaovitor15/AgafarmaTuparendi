@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, FileDown, RotateCcw, Loader2 } from 'lucide-react';
+import { Plus, Trash2, FileDown, RotateCcw, Loader2, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import type { Orcamento, Medicamento } from '@/types/orcamento';
 import { cn } from '@/lib/utils';
-import { CalculosDisplay } from './CalculosDisplay';
 
 interface OrcamentoFormProps {
   onSave: (orcamento: Orcamento) => void;
   initialData?: Orcamento;
+  onCancelEdit?: () => void;
 }
 
 const initialMedicamento: Omit<Medicamento, 'id'> = {
@@ -24,19 +24,15 @@ const initialMedicamento: Omit<Medicamento, 'id'> = {
   valorUnitario: 0,
 };
 
-export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
+export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFormProps) {
   const [paciente, setPaciente] = useState(initialData?.paciente || { identificador: '', cpf: '' });
-  const [medicamentos, setMedicamentos] = useState<Medicamento[]>(initialData?.medicamentos || [{ id: uuidv4(), ...initialMedicamento }]);
+  const [medicamentos, setMedicamentos] = useState<Medicamento[]>(
+    initialData?.medicamentos && initialData.medicamentos.length > 0
+      ? initialData.medicamentos
+      : [{ id: uuidv4(), ...initialMedicamento }]
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
-
-  const totalMensal = useMemo(() => {
-    return medicamentos.reduce((acc, med) => acc + (med.valorUnitario || 0) * (med.quantidadeMensal || 1), 0);
-  }, [medicamentos]);
-
-  const totalTratamento = useMemo(() => {
-    return medicamentos.reduce((acc, med) => acc + (med.valorUnitario || 0) * (med.quantidadeTratamento || 1), 0);
-  }, [medicamentos]);
   
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -64,10 +60,11 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
     setIsSaving(true);
     // Simula uma chamada de API
     setTimeout(() => {
-        onSave({ paciente, medicamentos });
+        onSave({ id: initialData?.id, paciente, medicamentos });
         setIsSaving(false);
-        // Opcional: limpar formulário após salvar
-        // handleClear();
+        if (!initialData) {
+          handleClear();
+        }
     }, 1000);
   };
 
@@ -94,9 +91,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
   };
   
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      {/* Coluna do Formulário */}
-      <div className="lg:col-span-2 space-y-6">
+    <form className="space-y-6" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
         <Card>
           <CardHeader>
             <CardTitle>Informações do Paciente</CardTitle>
@@ -111,6 +106,9 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                 value={paciente.identificador}
                 onChange={e => handlePacienteChange('identificador', e.target.value)}
                 className={cn(errors.paciente_identificador && 'border-destructive')}
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
               />
                {errors.paciente_identificador && <p className="text-xs text-destructive">{errors.paciente_identificador}</p>}
             </div>
@@ -122,6 +120,9 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                 placeholder="000.000.000-00"
                 value={paciente.cpf}
                 onChange={e => handlePacienteChange('cpf', e.target.value)}
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
               />
             </div>
           </CardContent>
@@ -133,14 +134,14 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {medicamentos.map((med, index) => (
-              <div key={med.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 p-3 border rounded-lg relative">
+              <div key={med.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 p-3 border rounded-lg items-end">
                  <div className="md:col-span-4 space-y-1">
                   <Label htmlFor={`med_nome_${med.id}`}>Medicamento</Label>
-                  <Input id={`med_nome_${med.id}`} data-field={`medication_name_${index}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} />
+                  <Input id={`med_nome_${med.id}`} data-field={`medication_name_${index}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} autoComplete="off" data-lpignore="true" />
                 </div>
                  <div className="md:col-span-3 space-y-1">
                   <Label htmlFor={`med_principio_${med.id}`}>Princípio Ativo</Label>
-                  <Input id={`med_principio_${med.id}`} data-field={`active_principle_${index}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} />
+                  <Input id={`med_principio_${med.id}`} data-field={`active_principle_${index}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} autoComplete="off" data-lpignore="true" />
                 </div>
                  <div className="md:col-span-1 space-y-1">
                   <Label htmlFor={`med_qtd_mes_${med.id}`}>Qtd. Mês</Label>
@@ -155,7 +156,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                   <Input id={`med_valor_${med.id}`} type="number" step="0.01" min="0" data-field={`unit_price_${index}`} placeholder="R$ 0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10">
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10">
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
@@ -170,30 +171,31 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
             </Button>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Coluna dos Cálculos e Ações */}
-      <div className="lg:col-span-1 space-y-6">
-        <CalculosDisplay totalMensal={totalMensal} totalTratamento={totalTratamento} />
 
         <Card>
             <CardHeader><CardTitle>Ações</CardTitle></CardHeader>
-            <CardContent className="flex flex-col space-y-2">
+            <CardContent className="flex flex-wrap gap-2">
                  <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Salvar Orçamento
+                    {initialData ? 'Atualizar Orçamento' : 'Salvar Orçamento'}
                 </Button>
                 <Button variant="outline" disabled={true}>
                     <FileDown className="mr-2 h-4 w-4" />
                     Gerar PDF
                 </Button>
-                <Button variant="ghost" onClick={handleClear} className="text-destructive">
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Limpar Formulário
-                </Button>
+                {onCancelEdit ? (
+                   <Button variant="ghost" onClick={onCancelEdit} className="text-destructive">
+                       <X className="mr-2 h-4 w-4" />
+                       Cancelar Edição
+                   </Button>
+                ) : (
+                  <Button variant="ghost" onClick={handleClear} className="text-destructive">
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Limpar Formulário
+                  </Button>
+                )}
             </CardContent>
         </Card>
-      </div>
-    </div>
+    </form>
   );
 }
