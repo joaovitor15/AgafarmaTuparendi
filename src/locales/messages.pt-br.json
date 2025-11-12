@@ -1,0 +1,50 @@
+{
+  "app": {
+    "title": "Agafarma Tuparendi",
+    "subtitle": "Gestão de Orçamentos Judiciais"
+  },
+  "auth": {
+    "loginTitle": "Bem-vindo",
+    "loginButton": "Entrar com Google",
+    "logout": "Sair",
+    "emailNotAuthorized": "Desculpe, sua conta Google não tem permissão para acessar este aplicativo.",
+    "loginError": "Ocorreu um erro ao tentar fazer login. Tente novamente.",
+    "onlyAuthorizedEmails": "Apenas contas autorizadas podem acessar."
+  },
+  "accessDenied": {
+    "title": "Acesso Negado",
+    "message": "Sua conta não está na lista de usuários autorizados.",
+    "contact": "Por favor, entre em contato com o administrador para solicitar acesso.",
+    "backToLogin": "Voltar para o Login"
+  },
+  "sidebar": {
+    "orcamento": "Orçamento Judicial",
+    "vencidos": "Vencidos",
+    "devolucao": "Devolução"
+  },
+  "dashboard": {
+    "welcome": "Bem-vindo(a)",
+    "emptyState": "Nenhum dado disponível"
+  },
+  "pages": {
+    "orcamento": {
+      "title": "Orçamentos Judiciais",
+      "generatePdf": "Gerar PDF do Orçamento"
+    },
+    "vencidos": {
+      "title": "Processos Vencidos",
+      "generatePdf": "Gerar PDF de Vencidos"
+    },
+    "devolucao": {
+      "title": "Gestão de Devoluções",
+      "generatePdf": "Gerar PDF de Devolução"
+    }
+  },
+  "pdf": {
+    "generatingPDF": "Gerando PDF...",
+    "errorGeneratingPDF": "Erro ao gerar PDF",
+    "pdfGeneratedSuccess": "PDF gerado com sucesso!",
+"generationDate": "Data de geração",
+    "generatedBy": "Gerado por"
+  }
+}
