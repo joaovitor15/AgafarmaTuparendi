@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { OrcamentoForm } from '@/components/orcamento/OrcamentoForm';
-import type { Orcamento, Medicamento } from '@/types/orcamento';
+import type { Orcamento } from '@/types/orcamento';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
 import { FileDown, Pencil, Trash2 } from 'lucide-react';
 import {
