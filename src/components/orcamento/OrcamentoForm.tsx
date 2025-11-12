@@ -91,7 +91,7 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
   };
   
   return (
-    <form className="space-y-6" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
+    <form className="space-y-6" autoComplete="off" noValidate data-lpignore="true" onSubmit={(e) => e.preventDefault()}>
         <Card>
           <CardHeader>
             <CardTitle>Informações do Paciente</CardTitle>
@@ -107,6 +107,9 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
                 className={cn(errors.paciente_identificador && 'border-destructive')}
                 autoComplete="off"
                 data-lpignore="true"
+                data-form-type="other"
+                data-1p-ignore="true"
+                spellCheck="false"
               />
                {errors.paciente_identificador && <p className="text-xs text-destructive">{errors.paciente_identificador}</p>}
             </div>
@@ -119,6 +122,9 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
                 onChange={e => handlePacienteChange('cpf', e.target.value)}
                 autoComplete="off"
                 data-lpignore="true"
+                data-form-type="other"
+                data-1p-ignore="true"
+                spellCheck="false"
               />
             </div>
           </CardContent>
@@ -133,23 +139,23 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
               <div key={med.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 p-3 border rounded-lg relative items-end">
                  <div className="md:col-span-4 space-y-1">
                   <Label htmlFor={`item-orcamento-${med.id}`}>Medicamento</Label>
-                  <Input id={`item-orcamento-${med.id}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} autoComplete="off" data-lpignore="true" />
+                  <Input id={`item-orcamento-${med.id}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} autoComplete="off" data-lpignore="true" data-form-type="other" data-1p-ignore="true" spellCheck="false" />
                 </div>
                  <div className="md:col-span-3 space-y-1">
                   <Label htmlFor={`componente-ativo-${med.id}`}>Princípio Ativo</Label>
-                  <Input id={`componente-ativo-${med.id}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} autoComplete="off" data-lpignore="true" />
+                  <Input id={`componente-ativo-${med.id}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} autoComplete="off" data-lpignore="true" data-form-type="other" data-1p-ignore="true" spellCheck="false" />
                 </div>
                  <div className="md:col-span-1 space-y-1">
                   <Label htmlFor={`qtd-mes-${med.id}`}>Qtd. Mês</Label>
-                  <Input id={`qtd-mes-${med.id}`} type="number" min="1" value={med.quantidadeMensal} onChange={e => handleMedicamentoChange(med.id, 'quantidadeMensal', parseInt(e.target.value) || 1)} />
+                  <Input id={`qtd-mes-${med.id}`} type="number" min="1" value={med.quantidadeMensal} onChange={e => handleMedicamentoChange(med.id, 'quantidadeMensal', parseInt(e.target.value) || 1)} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
                 </div>
                  <div className="md:col-span-1 space-y-1">
                   <Label htmlFor={`qtd-trat-${med.id}`}>Qtd. Trat.</Label>
-                  <Input id={`qtd-trat-${med.id}`} type="number" min="1" value={med.quantidadeTratamento} onChange={e => handleMedicamentoChange(med.id, 'quantidadeTratamento', parseInt(e.target.value) || 1)} />
+                  <Input id={`qtd-trat-${med.id}`} type="number" min="1" value={med.quantidadeTratamento} onChange={e => handleMedicamentoChange(med.id, 'quantidadeTratamento', parseInt(e.target.value) || 1)} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
                 </div>
                  <div className="md:col-span-2 space-y-1">
                   <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
-                  <Input id={`valor-item-${med.id}`} type="number" step="0.01" min="0" placeholder="R$ 0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} />
+                  <Input id={`valor-item-${med.id}`} type="number" step="0.01" min="0" placeholder="R$ 0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10">
