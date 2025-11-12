@@ -9,13 +9,12 @@ export function AgafarmaLogo(props: SVGProps<SVGSVGElement>) {
       {...props}
     >
       <g fill="none" stroke="currentColor" strokeWidth="8">
-        {/* Outer Circle */}
-        <circle cx="50" cy="50" r="45" fill="currentColor" stroke="none" />
-        <circle cx="50" cy="50" r="37" fill="none" stroke="white" strokeWidth="2" />
+        {/* Outer Circle - now just an outline */}
+        <circle cx="50" cy="50" r="45" fill="none" />
         
-        {/* Heart Shape */}
+        {/* Heart Shape - now just an outline */}
         <path 
-          stroke="white"
+          stroke="currentColor"
           strokeWidth="8"
           strokeLinecap="round"
           strokeLinejoin="round"
