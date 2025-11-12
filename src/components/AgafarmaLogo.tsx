@@ -8,9 +8,20 @@ export function AgafarmaLogo(props: SVGProps<SVGSVGElement>) {
       aria-label="Agafarma Logo"
       {...props}
     >
-      <g fill="currentColor">
-        <path d="M50 5C25.1 5 5 25.1 5 50s20.1 45 45 45 45-20.1 45-45S74.9 5 50 5zm0 82C29.6 87 13 70.4 13 50S29.6 13 50 13s37 16.6 37 37-16.6 37-37 37z" />
-        <path d="M50 25c-8.3 0-15 6.7-15 15v30h10V40c0-2.8 2.2-5 5-5s5 2.2 5 5v30h10V40c0-8.3-6.7-15-15-15z" />
+      <g fill="none" stroke="currentColor" strokeWidth="8">
+        {/* Outer Circle */}
+        <circle cx="50" cy="50" r="45" fill="currentColor" stroke="none" />
+        <circle cx="50" cy="50" r="37" fill="none" stroke="white" strokeWidth="2" />
+        
+        {/* Heart Shape */}
+        <path 
+          stroke="white"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          d="M50 40C40 25 25 30 25 45C25 60 50 75 50 75C50 75 75 60 75 45C75 30 60 25 50 40Z"
+        />
       </g>
     </svg>
   );
