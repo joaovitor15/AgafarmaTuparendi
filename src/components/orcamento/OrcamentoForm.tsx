@@ -98,9 +98,9 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="md:col-span-3 space-y-2">
-              <Label htmlFor="processo-paciente">Identificador</Label>
+              <Label htmlFor="identificador-principal">Identificador</Label>
               <Input
-                id="processo-paciente"
+                id="identificador-principal"
                 placeholder="Nome completo ou identificador único"
                 value={paciente.identificador}
                 onChange={e => handlePacienteChange('identificador', e.target.value)}
