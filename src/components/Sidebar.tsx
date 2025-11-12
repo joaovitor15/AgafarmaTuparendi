@@ -3,17 +3,16 @@
 import { useAuth } from '@/contexts/AuthContext';
 import messages from '@/locales/messages.pt-br.json';
 import { Button } from '@/components/ui/button';
-import { ClipboardList, Clock, LogOut, RefreshCw, Loader2 } from 'lucide-react';
+import { LogOut, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { AgafarmaLogo } from './AgafarmaLogo';
 
 const navItems = [
-  { href: '/dashboard/orcamento-judicial', icon: ClipboardList, label: messages.sidebar.orcamento },
-  { href: '/dashboard/vencidos', icon: Clock, label: messages.sidebar.vencidos },
-  { href: '/dashboard/devolucao', icon: RefreshCw, label: messages.sidebar.devolucao },
+  { href: '/dashboard/orcamento-judicial', emoji: '📋', label: messages.sidebar.orcamento },
+  { href: '/dashboard/vencidos', emoji: '⏰', label: messages.sidebar.vencidos },
+  { href: '/dashboard/devolucao', emoji: '🔄', label: messages.sidebar.devolucao },
 ];
 
 export function Sidebar() {
@@ -22,28 +21,24 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <aside className="flex w-20 flex-col items-center gap-y-4 border-r bg-card p-2">
-        <div className="p-2">
-            <AgafarmaLogo className="h-10 w-10 text-primary" />
-        </div>
-        <nav className="flex flex-col items-center gap-2 w-full mt-4">
+      <aside className="hidden w-20 flex-col items-center gap-y-2 border-r bg-card p-2 md:flex">
+        <nav className="flex flex-col items-center gap-2 w-full mt-2">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Tooltip key={item.label}>
                 <TooltipTrigger asChild>
-                  <Link href={item.href} legacyBehavior>
+                  <Link href={item.href} passHref legacyBehavior>
                     <a
                       className={cn(
-                        'flex flex-col items-center justify-center w-16 h-16 rounded-lg transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
+                        'flex h-16 w-16 items-center justify-center rounded-lg text-3xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
                         isActive
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       )}
                       aria-label={item.label}
                     >
-                      <item.icon className="h-6 w-6" />
-                      <span className="mt-1 text-xs">{item.label}</span>
+                      {item.emoji}
                     </a>
                   </Link>
                 </TooltipTrigger>
@@ -57,8 +52,8 @@ export function Sidebar() {
         <div className="mt-auto flex flex-col items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={signOutUser} disabled={loading} className="h-12 w-12 rounded-lg">
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+                <Button variant="ghost" size="icon" onClick={signOutUser} disabled={loading} className="h-16 w-16 rounded-lg">
+                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <LogOut className="h-6 w-6" />}
                 </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
