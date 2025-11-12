@@ -2,17 +2,16 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import messages from '@/locales/messages.pt-br.json';
-import { Button } from '@/components/ui/button';
-import { LogOut, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Loader2 } from 'lucide-react';
+import { DevolucaoIcon, OrcamentoIcon, VencidosIcon, LogoutIcon } from './icons';
 
 const navItems = [
-  { href: '/dashboard/orcamento-judicial', emoji: '📋', label: messages.sidebar.orcamento },
-  { href: '/dashboard/vencidos', emoji: '⏰', label: messages.sidebar.vencidos },
-  { href: '/dashboard/devolucao', emoji: '🔄', label: messages.sidebar.devolucao },
+  { href: '/dashboard/orcamento-judicial', icon: OrcamentoIcon, label: messages.sidebar.orcamento },
+  { href: '/dashboard/vencidos', icon: VencidosIcon, label: messages.sidebar.vencidos },
+  { href: '/dashboard/devolucao', icon: DevolucaoIcon, label: messages.sidebar.devolucao },
 ];
 
 export function Sidebar() {
@@ -20,48 +19,43 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <TooltipProvider delayDuration={100}>
-      <aside className="hidden w-20 flex-col items-center gap-y-2 border-r bg-card p-2 md:flex">
-        <nav className="flex flex-col items-center gap-2 w-full mt-2">
-          {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
-            return (
-              <Tooltip key={item.label}>
-                <TooltipTrigger asChild>
-                  <Link href={item.href} passHref legacyBehavior>
-                    <a
-                      className={cn(
-                        'flex h-16 w-16 items-center justify-center rounded-lg text-3xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                      aria-label={item.label}
-                    >
-                      {item.emoji}
-                    </a>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>{item.label}</p>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </nav>
-        <div className="mt-auto flex flex-col items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={signOutUser} disabled={loading} className="h-16 w-16 rounded-lg">
-                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <LogOut className="h-6 w-6" />}
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{messages.auth.logout}</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </aside>
-    </TooltipProvider>
+    <aside className="hidden w-20 flex-col items-center border-r bg-card p-2 md:flex">
+      <nav className="flex flex-col items-center gap-3 w-full mt-2">
+        {navItems.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link href={item.href} passHref legacyBehavior key={item.label}>
+              <a
+                className={cn(
+                  'flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-200',
+                  'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-primary/80 hover:text-primary-foreground'
+                )}
+                aria-label={item.label}
+              >
+                <Icon className="h-7 w-7" />
+              </a>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-auto flex flex-col items-center gap-2 mb-2">
+        <button
+          onClick={signOutUser}
+          disabled={loading}
+          className={cn(
+            'flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-200',
+            'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+            'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-destructive'
+          )}
+          aria-label={messages.auth.logout}
+        >
+          {loading ? <Loader2 className="h-7 w-7 animate-spin" /> : <LogoutIcon className="h-7 w-7" />}
+        </button>
+      </div>
+    </aside>
   );
 }
