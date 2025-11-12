@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, FileDown, RotateCcw, Loader2, X } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, Loader2, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import type { Orcamento, Medicamento } from '@/types/orcamento';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface OrcamentoFormProps {
-  onSave: (orcamento: Orcamento) => void;
-  initialData?: Orcamento;
-  onCancelEdit?: () => void;
+  onSave: (orcamento: Omit<Orcamento, 'id'>) => void;
+  initialData?: Omit<Orcamento, 'id'>;
 }
 
 const initialMedicamento: Omit<Medicamento, 'id'> = {
@@ -24,7 +24,8 @@ const initialMedicamento: Omit<Medicamento, 'id'> = {
   valorUnitario: 0,
 };
 
-export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFormProps) {
+export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
+  const router = useRouter();
   const [paciente, setPaciente] = useState(initialData?.paciente || { identificador: '', cpf: '' });
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>(
     initialData?.medicamentos && initialData.medicamentos.length > 0
@@ -60,11 +61,8 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
     setIsSaving(true);
     // Simula uma chamada de API
     setTimeout(() => {
-        onSave({ id: initialData?.id, paciente, medicamentos });
+        onSave({ paciente, medicamentos });
         setIsSaving(false);
-        if (!initialData) {
-          handleClear();
-        }
     }, 1000);
   };
 
@@ -89,6 +87,10 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
     setMedicamentos([{ id: uuidv4(), ...initialMedicamento }]);
     setErrors({});
   };
+
+  const onCancel = () => {
+    router.push('/dashboard/orcamento-judicial');
+  }
   
   return (
     <form className="space-y-6" autoComplete="off" noValidate data-lpignore="true" onSubmit={(e) => e.preventDefault()}>
@@ -183,23 +185,18 @@ export function OrcamentoForm({ onSave, initialData, onCancelEdit }: OrcamentoFo
             <CardContent className="flex flex-wrap gap-2">
                  <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {initialData ? 'Atualizar Orçamento' : 'Salvar Orçamento'}
+                    {'Salvar Orçamento'}
                 </Button>
-                <Button variant="outline" disabled={true}>
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Gerar PDF
+                
+                <Button variant="ghost" onClick={onCancel} className="text-destructive hover:text-destructive-foreground hover:bg-destructive">
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
                 </Button>
-                {onCancelEdit ? (
-                   <Button variant="ghost" onClick={onCancelEdit} className="text-destructive hover:text-destructive-foreground hover:bg-destructive">
-                       <X className="mr-2 h-4 w-4" />
-                       Cancelar Edição
-                   </Button>
-                ) : (
-                  <Button variant="ghost" onClick={handleClear} className="text-destructive hover:text-destructive-foreground hover:bg-destructive">
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Limpar Formulário
-                  </Button>
-                )}
+                
+                <Button variant="ghost" onClick={handleClear} className="text-muted-foreground">
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Limpar Formulário
+                </Button>
             </CardContent>
         </Card>
     </form>
