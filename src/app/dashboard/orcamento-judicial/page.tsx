@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
-import { FileDown, Pencil, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import type { Orcamento } from '@/types/orcamento';
 import {
   AlertDialog,
@@ -15,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,11 +32,13 @@ export default function OrcamentoJudicialDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
+  const [clientRendered, setClientRendered] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
+    setClientRendered(true);
     if (!user) {
       setLoading(false);
       return;
@@ -144,7 +147,7 @@ export default function OrcamentoJudicialDashboardPage() {
                                   <TableCell className="font-medium">{orcamento.paciente.identificador}</TableCell>
                                   <TableCell>{formatarCPF(orcamento.paciente.cpf)}</TableCell>
                                   <TableCell>
-                                    {new Date(orcamento.dataCriacao).toLocaleDateString('pt-BR', {
+                                    {clientRendered && new Date(orcamento.dataCriacao).toLocaleDateString('pt-BR', {
                                       day: '2-digit',
                                       month: '2-digit',
                                       year: 'numeric',
