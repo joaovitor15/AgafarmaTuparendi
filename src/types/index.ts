@@ -25,14 +25,17 @@ export type StatusDevolucao =
   | 'aguardando_credito'
   | 'devolucao_finalizada';
 
+export interface DevolucaoProduto {
+  nome: string;
+  quantidade: number;
+}
 
 export interface Devolucao {
   id: string;
   notaFiscal: string;
   dataRealizada: string;
   distribuidora: string;
-  produto: string;
-  quantidade: number;
+  produtos: DevolucaoProduto[];
   motivo: string;
   protocolo?: string;
   notaFiscalEntrada: string;

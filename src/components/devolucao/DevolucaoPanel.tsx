@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Devolucao, StatusDevolucao } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,7 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     notaFiscal: '123456',
     dataRealizada: '2023-10-26',
     distribuidora: 'Santa Cruz',
-    produto: 'Paracetamol 750mg',
-    quantidade: 50,
+    produtos: [{ nome: 'Paracetamol 750mg', quantidade: 50 }],
     motivo: 'Vencimento próximo',
     notaFiscalEntrada: 'NF-E 98765',
     status: 'solicitacao_nfd',
@@ -28,8 +27,7 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     notaFiscal: '123457',
     dataRealizada: '2023-10-28',
     distribuidora: 'Panarello',
-    produto: 'Dipirona 500mg',
-    quantidade: 30,
+    produtos: [{ nome: 'Dipirona 500mg', quantidade: 30 }],
     motivo: 'Excesso de estoque',
     notaFiscalEntrada: 'NF-E 98766',
     status: 'aguardar_coleta',
@@ -41,8 +39,7 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     notaFiscal: '654321',
     dataRealizada: '2023-11-01',
     distribuidora: 'Panarello',
-    produto: 'Ibuprofeno 400mg',
-    quantidade: 20,
+    produtos: [{ nome: 'Ibuprofeno 400mg', quantidade: 20 }],
     motivo: 'Produto avariado',
     notaFiscalEntrada: 'NF-E 11223',
     status: 'aguardando_credito',
@@ -55,8 +52,7 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     notaFiscal: '789012',
     dataRealizada: '2023-09-15',
     distribuidora: 'Gam',
-    produto: 'Vitamina C',
-    quantidade: 100,
+    produtos: [{ nome: 'Vitamina C', quantidade: 100 }],
     motivo: 'Vencido',
     notaFiscalEntrada: 'NF-E 44556',
     status: 'devolucao_finalizada',
@@ -69,8 +65,7 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     notaFiscal: '101010',
     dataRealizada: '2024-01-10',
     distribuidora: 'Santa Cruz',
-    produto: 'Losartana 50mg',
-    quantidade: 10,
+    produtos: [{ nome: 'Losartana 50mg', quantidade: 10 }],
     motivo: 'Pedido errado',
     notaFiscalEntrada: 'NF-E 77788',
     status: 'solicitacao_nfd',
@@ -81,6 +76,7 @@ export function DevolucaoPanel() {
   const [devolucoes, setDevolucoes] = useState<Devolucao[]>(MOCK_DEVOLUCOES);
   const [filtros, setFiltros] = useState<StatusDevolucao[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
+  const [novaDevolucaoId, setNovaDevolucaoId] = useState<string | null>(null);
 
   const devolucoesFiltradas = useMemo(() => {
     const devolucoesOrdenadas = [...devolucoes].sort((a, b) => new Date(b.dataRealizada).getTime() - new Date(a.dataRealizada).getTime());
@@ -91,19 +87,26 @@ export function DevolucaoPanel() {
   }, [devolucoes, filtros]);
 
 
-  const handleSalvarDevolucao = (dadosIniciais: Partial<Devolucao>) => {
+  const handleSalvarDevolucao = (dadosDevolucao: Omit<Devolucao, 'id'>) => {
+    const novoId = uuidv4();
     const novaDevolucao: Devolucao = {
-      id: uuidv4(),
-      produto: '', // Será preenchido depois
-      quantidade: 0, // Será preenchido depois
-      notaFiscal: dadosIniciais.notaFiscalEntrada || '', // Usando NF de entrada como agrupador inicial
-      ...dadosIniciais,
-      status: 'solicitacao_nfd',
-    } as Devolucao;
+      id: novoId,
+      ...dadosDevolucao,
+      notaFiscal: dadosDevolucao.notaFiscalEntrada, // Usando NF de entrada como agrupador inicial
+    };
 
     setDevolucoes(prev => [novaDevolucao, ...prev]);
+    setNovaDevolucaoId(novoId); // Marcar este ID para expandir
     setModalAberto(false);
   };
+  
+  useEffect(() => {
+    // Para limpar o ID da nova devolução após a renderização ter ocorrido
+    if (novaDevolucaoId) {
+        const timer = setTimeout(() => setNovaDevolucaoId(null), 100);
+        return () => clearTimeout(timer);
+    }
+  }, [novaDevolucaoId]);
 
   const handleUpdateDevolucao = (devolucaoAtualizada: Devolucao) => {
     setDevolucoes(prev => prev.map(d => d.id === devolucaoAtualizada.id ? devolucaoAtualizada : d));
@@ -135,6 +138,7 @@ export function DevolucaoPanel() {
         devolucoes={devolucoesFiltradas}
         onUpdate={handleUpdateDevolucao}
         onExcluir={handleExcluirDevolucao}
+        idParaExpandir={novaDevolucaoId}
       />
 
       {modalAberto && (
@@ -142,7 +146,6 @@ export function DevolucaoPanel() {
             open={modalAberto}
             onOpenChange={setModalAberto}
             onSave={handleSalvarDevolucao}
-            isCreating={true}
           />
       )}
     </div>

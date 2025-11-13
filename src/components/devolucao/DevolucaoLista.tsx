@@ -8,12 +8,14 @@ interface DevolucaoListaProps {
   devolucoes: Devolucao[];
   onUpdate: (devolucao: Devolucao) => void;
   onExcluir: (id: string) => void;
+  idParaExpandir?: string | null;
 }
 
 export function DevolucaoLista({
   devolucoes,
   onUpdate,
   onExcluir,
+  idParaExpandir,
 }: DevolucaoListaProps) {
   
   if (devolucoes.length === 0) {
@@ -36,6 +38,7 @@ export function DevolucaoLista({
           devolucao={devolucao}
           onUpdate={onUpdate}
           onExcluir={onExcluir}
+          iniciaExpandido={devolucao.id === idParaExpandir}
         />
       ))}
     </div>
