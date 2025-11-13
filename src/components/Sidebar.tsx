@@ -3,7 +3,7 @@
 import messages from '@/locales/messages.pt-br.json';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Clock, Undo2 } from 'lucide-react';
+import { FileText, Clock, Notebook } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -16,7 +16,7 @@ import { Button } from './ui/button';
 export const navItems = [
   { href: '/dashboard/orcamento-judicial', icon: FileText, label: messages.sidebar.orcamento },
   { href: '/dashboard/vencidos', icon: Clock, label: messages.sidebar.vencidos },
-  { href: '/dashboard/devolucao', icon: Undo2, label: messages.sidebar.devolucao },
+  { href: '/dashboard/devolucao', icon: Notebook, label: messages.sidebar.devolucao },
 ];
 
 export function Sidebar() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Notebook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,

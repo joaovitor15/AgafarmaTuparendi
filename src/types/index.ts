@@ -1,3 +1,5 @@
+'use client';
+
 export interface OrcamentoData {
   id: string;
   numero: string;
@@ -17,11 +19,25 @@ export interface VencidoData {
   valor: number;
 }
 
-export interface DevolucaoData {
+export type StatusDevolucao =
+  | 'solicitacao_nfd'
+  | 'aguardar_coleta'
+  | 'aguardando_credito'
+  | 'devolucao_finalizada';
+
+
+export interface Devolucao {
   id: string;
-  numero: string;
-  cliente: string;
-  dataDevolvido: string;
+  notaFiscal: string;
+  dataRealizada: string;
+  distribuidora: string;
+  produto: string;
+  quantidade: number;
   motivo: string;
-  observacoes: string;
+  protocolo?: string;
+  notaFiscalEntrada: string;
+  nfdNumero?: string;
+  nfdValor?: number;
+  dataColeta?: string;
+  status: StatusDevolucao;
 }

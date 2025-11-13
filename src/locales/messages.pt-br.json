@@ -20,7 +20,7 @@
   "sidebar": {
     "orcamento": "Orçamento Judicial",
     "vencidos": "Vencidos",
-    "devolucao": "Devolução"
+    "devolucao": "Devoluções"
   },
   "dashboard": {
     "welcome": "Bem-vindo(a)",
@@ -44,7 +44,7 @@
     "generatingPDF": "Gerando PDF...",
     "errorGeneratingPDF": "Erro ao gerar PDF",
     "pdfGeneratedSuccess": "PDF gerado com sucesso!",
-"generationDate": "Data de geração",
+    "generationDate": "Data de geração",
     "generatedBy": "Gerado por"
   }
 }
