@@ -96,9 +96,10 @@ export function useGerarVencidosPDF() {
         head: head,
         body: body,
         foot: foot,
-        theme: 'striped',
+        theme: 'grid',
         headStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
         footStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
+        bodyStyles: { lineWidth: 0.1 },
         columnStyles: {
             0: { cellWidth: 20 },
             1: { cellWidth: 'auto' },
@@ -135,8 +136,9 @@ export function useGerarVencidosPDF() {
         startY: 60,
         head: head,
         body: body,
-        theme: 'striped',
+        theme: 'grid',
         headStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
+        bodyStyles: { lineWidth: 0.1 },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || doc.internal.pageSize.getHeight() - 50;
