@@ -38,7 +38,7 @@ export const PDF_CONFIG = {
       },
       textoNormal: {
         fonte: 'Arial',
-        tamanho: 11,
+        tamanho: 13,
         negrito: false,
         alinhamento: 'justify',
         espacamentoDepois: 5,
