@@ -32,15 +32,15 @@ export interface DevolucaoProduto {
 
 export interface Devolucao {
   id: string;
-  notaFiscal: string;
-  dataRealizada: string;
-  distribuidora: string;
-  produtos: DevolucaoProduto[];
-  motivo: string;
-  protocolo?: string;
   notaFiscalEntrada: string;
+  distribuidora: string;
+  motivo: string;
+  dataRealizada: string;
+  produtos: DevolucaoProduto[];
+  protocolo?: string;
   nfdNumero?: string;
   nfdValor?: number;
+  nfSaida?: string;
   dataColeta?: string;
   status: StatusDevolucao;
 }

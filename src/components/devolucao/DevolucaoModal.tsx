@@ -18,8 +18,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, Dr
 import { ScrollArea } from '../ui/scroll-area';
 import { Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-type DevolucaoFormData = Omit<Devolucao, 'id' | 'status'> & {
+type DevolucaoFormData = Omit<Devolucao, 'id' | 'status' | 'dataRealizada'> & {
     produtos: (DevolucaoProduto & { tempId: string })[];
 };
 
@@ -30,13 +31,11 @@ interface DevolucaoModalProps {
 }
 
 const initialFormData: DevolucaoFormData = {
-  dataRealizada: '',
   notaFiscalEntrada: '',
   produtos: [{ tempId: uuidv4(), nome: '', quantidade: 1 }],
   distribuidora: '',
   motivo: '',
   protocolo: '',
-  notaFiscal: '',
 };
 
 export function DevolucaoModal({
@@ -58,6 +57,10 @@ export function DevolucaoModal({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: 'distribuidora' | 'motivo', value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
   
   const handleProdutoChange = (tempId: string, field: 'nome' | 'quantidade', value: string | number) => {
@@ -83,7 +86,6 @@ export function DevolucaoModal({
 
   const validate = () => {
     const newErrors: Record<string, any> = {};
-    if (!formData.dataRealizada) newErrors.dataRealizada = 'Data é obrigatória.';
     if (!formData.notaFiscalEntrada) newErrors.notaFiscalEntrada = 'NF de Entrada é obrigatória.';
     if (!formData.distribuidora) newErrors.distribuidora = 'Distribuidora é obrigatória.';
     if (!formData.motivo) newErrors.motivo = 'Motivo é obrigatório.';
@@ -118,25 +120,49 @@ export function DevolucaoModal({
     if (validate()) {
         const { produtos, ...rest } = formData;
         const finalProdutos = produtos.map(({ tempId, ...p }) => p);
-      onSave({ ...rest, produtos: finalProdutos, status: 'solicitacao_nfd' });
+      onSave({ 
+        ...rest, 
+        produtos: finalProdutos, 
+        status: 'solicitacao_nfd',
+        dataRealizada: new Date().toISOString(),
+      });
     }
   };
 
   const FormContent = () => (
     <>
-      <div className="space-y-2">
-        <Label htmlFor="dataRealizada">Data da Solicitação</Label>
-        <Input id="dataRealizada" name="dataRealizada" type="date" value={formData.dataRealizada || ''} onChange={handleInputChange} />
-        {errors.dataRealizada && <p className="text-xs text-destructive">{errors.dataRealizada}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="notaFiscalEntrada">NF de Entrada Original</Label>
-        <Input id="notaFiscalEntrada" name="notaFiscalEntrada" placeholder="Número da NF de compra" value={formData.notaFiscalEntrada || ''} onChange={handleInputChange} />
-        {errors.notaFiscalEntrada && <p className="text-xs text-destructive">{errors.notaFiscalEntrada}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+            <Label htmlFor="notaFiscalEntrada">NF*</Label>
+            <Input id="notaFiscalEntrada" name="notaFiscalEntrada" placeholder="Número da NF" value={formData.notaFiscalEntrada || ''} onChange={handleInputChange} />
+            {errors.notaFiscalEntrada && <p className="text-xs text-destructive">{errors.notaFiscalEntrada}</p>}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="distribuidora">Distribuidora*</Label>
+            <Input id="distribuidora" name="distribuidora" placeholder="Nome da distribuidora" value={formData.distribuidora || ''} onChange={handleInputChange} />
+            {errors.distribuidora && <p className="text-xs text-destructive">{errors.distribuidora}</p>}
+        </div>
       </div>
       
       <div className="space-y-2">
-        <Label>Produtos</Label>
+        <Label htmlFor="motivo">Motivo*</Label>
+        <Select name='motivo' onValueChange={(v) => handleSelectChange('motivo', v)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o motivo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Validade">Validade</SelectItem>
+            <SelectItem value="Lote Ruim">Lote Ruim</SelectItem>
+            <SelectItem value="Dano na Embalagem">Dano na Embalagem</SelectItem>
+            <SelectItem value="Produto Incorreto">Produto Incorreto</SelectItem>
+            <SelectItem value="Outro">Outro</SelectItem>
+          </SelectContent>
+        </Select>
+        {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Produtos*</Label>
         <div className='space-y-3 rounded-lg border p-3'>
             {formData.produtos.map((produto, index) => (
                 <div key={produto.tempId} className='flex items-end gap-2'>
@@ -172,21 +198,6 @@ export function DevolucaoModal({
             </Button>
             {errors.produtos_geral && <p className="text-xs text-destructive">{errors.produtos_geral}</p>}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="distribuidora">Distribuidora</Label>
-        <Input id="distribuidora" name="distribuidora" value={formData.distribuidora || ''} onChange={handleInputChange} />
-        {errors.distribuidora && <p className="text-xs text-destructive">{errors.distribuidora}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="motivo">Motivo da Devolução</Label>
-        <Input id="motivo" name="motivo" value={formData.motivo || ''} onChange={handleInputChange} />
-        {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
-      </div>
-        <div className="space-y-2">
-        <Label htmlFor="protocolo">Protocolo (Opcional)</Label>
-        <Input id="protocolo" name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
       </div>
     </>
   );
