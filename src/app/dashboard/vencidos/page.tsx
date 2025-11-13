@@ -165,7 +165,7 @@ export default function VencidosPage() {
           </div>
         </div>
 
-      {vencidos.length === 0 ? (
+      {vencidos.length === 0 && !loading ? (
          <div className="text-center py-10 border-2 border-dashed rounded-lg">
             <p className="text-muted-foreground">Nenhum medicamento vencido adicionado.</p>
             <p className="text-sm text-muted-foreground">Clique em "+ Adicionar Novo" para começar.</p>
@@ -182,8 +182,8 @@ export default function VencidosPage() {
                     <TableHead>Qtd</TableHead>
                     <TableHead>Lote</TableHead>
                     <TableHead>Cód. Barras</TableHead>
-                    <TableHead>Preço Unit</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead className="text-right tabular-nums">Preço Unit.</TableHead>
+                    <TableHead className="text-right tabular-nums">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -195,8 +195,8 @@ export default function VencidosPage() {
                       <TableCell>{item.quantidade}</TableCell>
                       <TableCell>{item.lote}</TableCell>
                       <TableCell>{item.codigoBarras}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.precoUnitario)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(item.quantidade * item.precoUnitario)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(item.precoUnitario)}</TableCell>
+                      <TableCell className="text-right font-semibold text-primary tabular-nums">{formatCurrency(item.quantidade * item.precoUnitario)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button asChild variant="outline" size="icon" className="rounded-full">

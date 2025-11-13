@@ -45,7 +45,11 @@ export function VencidoForm({ onSave, initialData, isEditing = false }: VencidoF
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
   const hasChanges = useMemo(() => {
-    if (!initialData) return Object.values(formData).some(v => v !== '' && v !== 0 && v !== 1);
+    if (!initialData) return Object.values(formData).some(v => {
+      if (typeof v === 'string') return v !== '';
+      if (typeof v === 'number') return v !== 0 && v !== 1;
+      return false;
+    });
     return JSON.stringify(initialData) !== JSON.stringify(formData);
   }, [initialData, formData]);
   
@@ -61,7 +65,14 @@ export function VencidoForm({ onSave, initialData, isEditing = false }: VencidoF
   };
   
   const handleValorChange = (rawValue: string) => {
-    const value = rawValue.replace(/\D/g, '');
+    let value = rawValue.replace(/\D/g, '');
+    if (value === '') {
+        handleInputChange('precoUnitario', 0);
+        return;
+    }
+    if (rawValue.endsWith(',') || rawValue.endsWith('.')) {
+        value = value + '00';
+    }
     const numericValue = parseInt(value, 10) / 100;
     handleInputChange('precoUnitario', isNaN(numericValue) ? 0 : numericValue);
   };
@@ -196,7 +207,7 @@ export function VencidoForm({ onSave, initialData, isEditing = false }: VencidoF
             </div>
             <div className="space-y-2">
               <Label>Total</Label>
-              <Input value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCalculado)} readOnly className="bg-muted/50 text-right font-bold" />
+              <Input value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalCalculado)} readOnly className="bg-muted/50 text-right font-bold tabular-nums" />
             </div>
           </CardContent>
         </Card>
