@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, onSnapshot, query, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, deleteDoc, doc, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,51 +33,91 @@ const MedicamentosModal = dynamic(
   }
 );
 
+const PAGE_SIZE = 10;
 
 export function TabelaOrcamentos() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
   const [clientRendered, setClientRendered] = useState(false);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  useEffect(() => {
-    setClientRendered(true);
+  const loadOrcamentos = useCallback(async (initial = false) => {
     if (!user) {
       setLoading(false);
       return;
-    };
+    }
 
-    const q = query(collection(db, `users/${user.uid}/orcamentoJudicial`));
+    if (initial) {
+      setLoading(true);
+      setOrcamentos([]);
+      setLastDoc(null);
+      setHasMore(true);
+    } else {
+      setLoadingMore(true);
+    }
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const orcamentosData: Orcamento[] = [];
-      querySnapshot.forEach((doc) => {
-        orcamentosData.push({ id: doc.id, ...doc.data() } as Orcamento);
-      });
-      setOrcamentos(orcamentosData.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime()));
-      setLoading(false);
-    }, (error) => {
-      console.error("Erro ao buscar orçamentos: ", error);
+    try {
+      let q;
+      const orcamentoCollection = collection(db, `users/${user.uid}/orcamentoJudicial`);
+
+      if (lastDoc && !initial) {
+        q = query(orcamentoCollection, orderBy('dataCriacao', 'desc'), startAfter(lastDoc), limit(PAGE_SIZE));
+      } else {
+        q = query(orcamentoCollection, orderBy('dataCriacao', 'desc'), limit(PAGE_SIZE));
+      }
+
+      const snapshot = await getDocs(q);
+      const newDocs = snapshot.docs;
+      
+      const newOrcamentos = newDocs.map(doc => ({ id: doc.id, ...doc.data() } as Orcamento));
+
+      if (initial) {
+        setOrcamentos(newOrcamentos);
+      } else {
+        setOrcamentos(prev => [...prev, ...newOrcamentos]);
+      }
+      
+      if (newDocs.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
+      if (newDocs.length > 0) {
+        setLastDoc(newDocs[newDocs.length - 1]);
+      }
+
+    } catch (err) {
+      console.error("Erro ao buscar orçamentos: ", err);
       toast({
         variant: "destructive",
         title: "Erro ao carregar dados",
         description: "Não foi possível buscar os orçamentos.",
       });
+    } finally {
       setLoading(false);
-    });
+      setLoadingMore(false);
+    }
+  }, [user, lastDoc, toast]);
 
-    return () => unsubscribe();
-  }, [user, toast]);
+
+  useEffect(() => {
+    setClientRendered(true);
+    loadOrcamentos(true);
+  }, [user]); // Re-executa apenas se o usuário mudar. A função `loadOrcamentos` é chamada manualmente.
 
   const handleDelete = async (id: string) => {
     if (!user) return;
     setDeletingId(id);
     try {
       await deleteDoc(doc(db, `users/${user.uid}/orcamentoJudicial`, id));
+      setOrcamentos(prev => prev.filter(o => o.id !== id));
       toast({
         title: 'Orçamento Excluído!',
         description: 'O orçamento foi removido com sucesso.',
@@ -103,8 +143,8 @@ export function TabelaOrcamentos() {
         <div className="border rounded-lg overflow-hidden">
           <Table>
               <TableCaption>
-                {loading && "Carregando orçamentos..."}
                 {!loading && orcamentos.length === 0 && "Nenhum orçamento criado."}
+                {loading && orcamentos.length === 0 && "Carregando orçamentos..."}
               </TableCaption>
               <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -116,8 +156,8 @@ export function TabelaOrcamentos() {
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {loading ? (
-                    Array.from({ length: 3 }).map((_, index) => (
+                  {loading && orcamentos.length === 0 ? (
+                    Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={index}>
                         <TableCell><Skeleton className="h-4 w-full" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-full" /></TableCell>
@@ -142,11 +182,11 @@ export function TabelaOrcamentos() {
                               })}
                             </TableCell>
                             <TableCell>
-                              <button
+                               <button
                                 onClick={() => setSelectedOrcamento(orcamento)}
                                 className="inline-flex items-center justify-center px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium hover:bg-secondary/80 transition-colors cursor-pointer"
                               >
-                                {orcamento.medicamentos.length} {orcamento.medicamentos.length > 1 ? 'itens' : 'item'}
+                                {orcamento.medicamentos.length} {orcamento.medicamentos.length === 1 ? 'item' : 'itens'}
                               </button>
                             </TableCell>
                             <TableCell className="text-right">
@@ -182,6 +222,14 @@ export function TabelaOrcamentos() {
               </TableBody>
           </Table>
         </div>
+        {hasMore && !loading && (
+          <div className="flex justify-center mt-4">
+            <Button onClick={() => loadOrcamentos()} disabled={loadingMore}>
+              {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Carregar mais
+            </Button>
+          </div>
+        )}
         {selectedOrcamento && (
           <Suspense fallback={<div>Carregando modal...</div>}>
             <MedicamentosModal

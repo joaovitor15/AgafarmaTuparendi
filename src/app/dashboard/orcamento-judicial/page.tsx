@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { TabelaOrcamentos } from '@/components/orcamento/TabelaOrcamentos';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,7 +31,9 @@ export default function OrcamentoJudicialDashboardPage() {
               <CardDescription>Visualize, edite ou remova os orçamentos criados.</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-               <TabelaOrcamentos />
+              <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                 <TabelaOrcamentos />
+              </Suspense>
             </CardContent>
         </Card>
       </div>
