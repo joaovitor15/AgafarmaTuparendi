@@ -58,7 +58,7 @@ export default function EditarOrcamentoPage() {
     fetchOrcamento();
   }, [user, orcamentoId, router, toast]);
 
-  const handleUpdateOrcamento = async (orcamentoData: Omit<Orcamento, 'id'>) => {
+  const handleUpdateOrcamento = async (orcamentoData: Omit<Orcamento, 'id' | 'dataCriacao' | 'status' | 'usuarioId'>) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -69,7 +69,11 @@ export default function EditarOrcamentoPage() {
     }
 
     try {
-      await updateOrcamento(user.uid, orcamentoId, orcamentoData);
+      const finalData = {
+        ...orcamentoData,
+        dataUltimaEdicao: new Date().toISOString(),
+      };
+      await updateOrcamento(user.uid, orcamentoId, finalData);
       toast({
         title: 'Orçamento Atualizado!',
         description: 'As alterações foram salvas com sucesso.',

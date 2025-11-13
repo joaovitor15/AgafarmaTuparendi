@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,10 +10,10 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Orcamento, Medicamento } from '@/types/orcamento';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { formatCpf } from '@/lib/masks';
+import { formatarCPF } from '@/lib/formatters';
 
 interface OrcamentoFormProps {
-  onSave: (orcamento: Omit<Orcamento, 'id' | 'dataCriacao' | 'dataUltimaEdicao' | 'status' | 'usuarioId'>) => Promise<void>;
+  onSave: (orcamento: Omit<Orcamento, 'id' | 'dataCriacao' | 'status' | 'usuarioId'>) => Promise<void>;
   initialData?: Omit<Orcamento, 'id'>;
   isEditing?: boolean;
 }
@@ -28,12 +28,27 @@ const initialMedicamento: Omit<Medicamento, 'id'> = {
 
 export function OrcamentoForm({ onSave, initialData, isEditing = false }: OrcamentoFormProps) {
   const router = useRouter();
-  const [paciente, setPaciente] = useState(initialData?.paciente || { identificador: '', cpf: '' });
+  
+  const memoizedInitialData = useMemo(() => {
+    if (initialData?.medicamentos) {
+      return {
+        ...initialData,
+        medicamentos: initialData.medicamentos.map(med => ({
+          ...med,
+          id: med.id || uuidv4()
+        })),
+      };
+    }
+    return initialData;
+  }, [initialData]);
+  
+  const [paciente, setPaciente] = useState(memoizedInitialData?.paciente || { identificador: '', cpf: '' });
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>(
-    initialData?.medicamentos && initialData.medicamentos.length > 0
-      ? initialData.medicamentos.map(med => ({ ...med, id: med.id || uuidv4() }))
+    memoizedInitialData?.medicamentos && memoizedInitialData.medicamentos.length > 0
+      ? memoizedInitialData.medicamentos
       : [{ id: uuidv4(), ...initialMedicamento }]
   );
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   
@@ -78,7 +93,9 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
   };
 
   const handleRemoveMedicamento = (id: string) => {
-    setMedicamentos(medicamentos.filter(med => med.id !== id));
+    if (medicamentos.length > 1) {
+      setMedicamentos(medicamentos.filter(med => med.id !== id));
+    }
   };
   
   const handleMedicamentoChange = (id: string, field: keyof Omit<Medicamento, 'id'>, value: string | number) => {
@@ -87,7 +104,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
 
   const handlePacienteChange = (field: 'identificador' | 'cpf', value: string) => {
     if (field === 'cpf') {
-      setPaciente(prev => ({ ...prev, [field]: formatCpf(value) }));
+      setPaciente(prev => ({ ...prev, [field]: formatarCPF(value) }));
     } else {
       setPaciente(prev => ({ ...prev, [field]: value }));
     }
@@ -103,28 +120,15 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     router.push('/dashboard/orcamento-judicial');
   }
 
-  const handleCurrencyChange = (id: string, value: string) => {
-    let numericValue = value.replace(/\D/g, '');
-    if (!numericValue) {
-      handleMedicamentoChange(id, 'valorUnitario', 0);
-      return;
-    }
-  
-    // Pad with zeros to the left until we have 3 digits
-    numericValue = numericValue.padStart(3, '0');
-  
-    const reais = numericValue.slice(0, -2);
-    const centavos = numericValue.slice(-2);
-    const formattedValue = `${reais},${centavos}`;
-  
-    handleMedicamentoChange(id, 'valorUnitario', parseFloat(formattedValue.replace(',', '.')));
+  const handleValorChange = (id: string, value: string) => {
+    let rawValue = value.replace(/\D/g, '');
+    let numericValue = Number(rawValue) / 100;
+    handleMedicamentoChange(id, 'valorUnitario', numericValue);
   };
 
-  const formatCurrencyForDisplay = (value: number) => {
-    if (!value || value === 0) return '';
-    const [reais, centavos] = value.toFixed(2).split('.');
-    return `${reais},${centavos || '00'}`;
-  }
+  const formatValorParaInput = (value: number): string => {
+    return (value * 100).toFixed(0);
+  };
   
   return (
     <form className="space-y-6" autoComplete="off" noValidate data-lpignore="true" onSubmit={(e) => e.preventDefault()}>
@@ -142,10 +146,6 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                 onChange={e => handlePacienteChange('identificador', e.target.value)}
                 className={cn(errors.paciente_identificador && 'border-destructive')}
                 autoComplete="off"
-                data-lpignore="true"
-                data-form-type="other"
-                data-1p-ignore="true"
-                spellCheck="false"
               />
                {errors.paciente_identificador && <p className="text-xs text-destructive">{errors.paciente_identificador}</p>}
             </div>
@@ -158,10 +158,6 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                 onChange={e => handlePacienteChange('cpf', e.target.value)}
                 maxLength={14}
                 autoComplete="off"
-                data-lpignore="true"
-                data-form-type="other"
-                data-1p-ignore="true"
-                spellCheck="false"
               />
             </div>
           </CardContent>
@@ -176,37 +172,34 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
               <div key={med.id} className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 p-3 border rounded-lg relative items-end">
                  <div className="md:col-span-4 space-y-1">
                   <Label htmlFor={`item-orcamento-${med.id}`}>Medicamento</Label>
-                  <Input id={`item-orcamento-${med.id}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} autoComplete="off" data-lpignore="true" data-form-type="other" data-1p-ignore="true" spellCheck="false" />
+                  <Input id={`item-orcamento-${med.id}`} placeholder="Ex: Paracetamol 750mg" value={med.nome} onChange={e => handleMedicamentoChange(med.id, 'nome', e.target.value)} className={cn(errors[`med_nome_${med.id}`] && 'border-destructive')} autoComplete="off" />
                 </div>
                  <div className="md:col-span-3 space-y-1">
                   <Label htmlFor={`componente-ativo-${med.id}`}>Princípio Ativo</Label>
-                  <Input id={`componente-ativo-${med.id}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} autoComplete="off" data-lpignore="true" data-form-type="other" data-1p-ignore="true" spellCheck="false" />
+                  <Input id={`componente-ativo-${med.id}`} placeholder="Opcional" value={med.principioAtivo} onChange={e => handleMedicamentoChange(med.id, 'principioAtivo', e.target.value)} autoComplete="off" />
                 </div>
                  <div className="md:col-span-1 space-y-1">
                   <Label htmlFor={`qtd-mes-${med.id}`}>Qtd. Mês</Label>
-                  <Input id={`qtd-mes-${med.id}`} type="number" min="1" value={med.quantidadeMensal} onChange={e => handleMedicamentoChange(med.id, 'quantidadeMensal', parseInt(e.target.value) || 1)} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
+                  <Input id={`qtd-mes-${med.id}`} type="number" min="1" value={med.quantidadeMensal} onChange={e => handleMedicamentoChange(med.id, 'quantidadeMensal', parseInt(e.target.value) || 1)} autoComplete="off" />
                 </div>
                  <div className="md:col-span-1 space-y-1">
                   <Label htmlFor={`qtd-trat-${med.id}`}>Qtd. Trat.</Label>
-                  <Input id={`qtd-trat-${med.id}`} type="number" min="1" value={med.quantidadeTratamento} onChange={e => handleMedicamentoChange(med.id, 'quantidadeTratamento', parseInt(e.target.value) || 1)} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
+                  <Input id={`qtd-trat-${med.id}`} type="number" min="1" value={med.quantidadeTratamento} onChange={e => handleMedicamentoChange(med.id, 'quantidadeTratamento', parseInt(e.target.value) || 1)} autoComplete="off" />
                 </div>
-                 <div className="md:col-span-2 space-y-1">
-                  <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
-                  <Input
-                    id={`valor-item-${med.id}`}
-                    type="text"
-                    placeholder="0,00"
-                    value={formatCurrencyForDisplay(med.valorUnitario)}
-                    onChange={(e) => handleCurrencyChange(med.id, e.target.value)}
-                    className={cn(errors[`med_valor_${med.id}`] && 'border-destructive', 'text-right')}
-                    autoComplete="off"
-                    data-form-type="other"
-                    data-1p-ignore="true"
-                    spellCheck="false"
-                  />
+                <div className="md:col-span-2 space-y-1">
+                    <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
+                    <Input
+                      id={`valor-item-${med.id}`}
+                      type="text"
+                      placeholder="0,00"
+                      value={med.valorUnitario > 0 ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(med.valorUnitario) : ''}
+                      onChange={(e) => handleValorChange(med.id, e.target.value)}
+                      className={cn(errors[`med_valor_${med.id}`] && 'border-destructive', 'text-right')}
+                      autoComplete="off"
+                    />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10">
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10" disabled={medicamentos.length <= 1}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
