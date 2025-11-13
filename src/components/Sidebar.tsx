@@ -15,7 +15,7 @@ import {
 import { Button } from './ui/button';
 
 
-const navItems = [
+export const navItems = [
   { href: '/dashboard/orcamento-judicial', icon: FileText, label: messages.sidebar.orcamento },
   { href: '/dashboard/vencidos', icon: Clock, label: messages.sidebar.vencidos },
   { href: '/dashboard/devolucao', icon: Undo2, label: messages.sidebar.devolucao },

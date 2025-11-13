@@ -5,9 +5,10 @@ import messages from '@/locales/messages.pt-br.json';
 import { AgafarmaLogo } from './AgafarmaLogo';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { LogOut, Loader2 } from 'lucide-react';
+import { LogOut, Loader2, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LogoutIcon } from './icons';
+import { MobileMenu } from './MobileMenu';
 
 export function Header() {
   const { user, signOutUser, loading } = useAuth();
@@ -24,10 +25,13 @@ export function Header() {
   return (
     <header className={cn(
       "flex h-16 w-full flex-shrink-0 items-center justify-between px-4",
-      "bg-card"
+      "bg-card border-b"
     )}>
       <div className="flex items-center gap-3">
-        <AgafarmaLogo className="h-10 w-10 text-primary" />
+        <div className="md:hidden">
+          <MobileMenu />
+        </div>
+        <AgafarmaLogo className="h-10 w-10 text-primary hidden md:block" />
         <h1 className="text-lg font-semibold text-foreground">{messages.app.title}</h1>
       </div>
       {user && (
@@ -44,7 +48,7 @@ export function Header() {
              onClick={signOutUser} 
              disabled={loading} 
              className={cn(
-              "md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90",
+              "hidden md:flex items-center justify-center h-10 w-10 rounded-full bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
              )}
              aria-label="Sair"

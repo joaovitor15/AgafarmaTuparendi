@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
-import { Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Pencil, Trash2, Loader2, ChevronDown } from 'lucide-react';
 import type { Orcamento } from '@/types/orcamento';
 import {
   AlertDialog,
@@ -18,19 +18,43 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, onSnapshot, query, deleteDoc, doc, orderBy, limit, startAfter, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { formatarCPF } from '@/lib/formatters';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MedicamentosAdaptive } from './MedicamentosAdaptive';
 
-const MedicamentosModal = dynamic(
-  () => import('@/components/orcamento/MedicamentosModal').then(mod => mod.MedicamentosModal),
-  { 
-    loading: () => <div className="p-4 text-center">Carregando...</div>,
-    ssr: false
-  }
+const TabelaOrcamentosSkeleton = () => (
+  <div className="border rounded-lg overflow-hidden">
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/50 hover:bg-muted/50">
+          <TableHead className="w-[25%]"><Skeleton className="h-4 w-2/3" /></TableHead>
+          <TableHead className="w-[20%]"><Skeleton className="h-4 w-1/2" /></TableHead>
+          <TableHead className="w-[20%]"><Skeleton className="h-4 w-1/2" /></TableHead>
+          <TableHead className="w-[15%]"><Skeleton className="h-4 w-1/3" /></TableHead>
+          <TableHead className="text-right w-[20%]"><Skeleton className="h-4 w-1/4 ml-auto" /></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <TableRow key={index}>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+            <TableCell className="text-right space-x-2">
+              <Skeleton className="h-10 w-10 inline-block rounded-full" />
+              <Skeleton className="h-10 w-10 inline-block rounded-full" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
 );
 
 const PAGE_SIZE = 10;
@@ -40,14 +64,15 @@ export function TabelaOrcamentos() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
   const [clientRendered, setClientRendered] = useState(false);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const loadOrcamentos = useCallback(async (initial = false) => {
     if (!user) {
@@ -76,14 +101,10 @@ export function TabelaOrcamentos() {
 
       const snapshot = await getDocs(q);
       const newDocs = snapshot.docs;
-      
+
       const newOrcamentos = newDocs.map(doc => ({ id: doc.id, ...doc.data() } as Orcamento));
 
-      if (initial) {
-        setOrcamentos(newOrcamentos);
-      } else {
-        setOrcamentos(prev => [...prev, ...newOrcamentos]);
-      }
+      setOrcamentos(prev => initial ? newOrcamentos : [...prev, ...newOrcamentos]);
       
       if (newDocs.length < PAGE_SIZE) {
         setHasMore(false);
@@ -106,11 +127,12 @@ export function TabelaOrcamentos() {
     }
   }, [user, lastDoc, toast]);
 
-
   useEffect(() => {
     setClientRendered(true);
-    loadOrcamentos(true);
-  }, [user]); // Re-executa apenas se o usuário mudar. A função `loadOrcamentos` é chamada manualmente.
+    if(user) {
+      loadOrcamentos(true);
+    }
+  }, [user]);
 
   const handleDelete = async (id: string) => {
     if (!user) return;
@@ -138,91 +160,82 @@ export function TabelaOrcamentos() {
     router.push(`/dashboard/orcamento-judicial/${id}`);
   };
 
-  return (
-     <>
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-              <TableCaption>
-                {!loading && orcamentos.length === 0 && "Nenhum orçamento criado."}
-                {loading && orcamentos.length === 0 && "Carregando orçamentos..."}
-              </TableCaption>
-              <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="w-[25%]">Paciente</TableHead>
-                      <TableHead className="w-[20%]">CPF</TableHead>
-                      <TableHead className="w-[20%]">Data Criação</TableHead>
-                      <TableHead className="w-[15%]">Medicamentos</TableHead>
-                      <TableHead className="text-right w-[20%]">Ações</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {loading && orcamentos.length === 0 ? (
-                    Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={index}>
-                        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Skeleton className="h-10 w-10 inline-block rounded-full" />
-                          <Skeleton className="h-10 w-10 inline-block rounded-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    orcamentos.map(orcamento => (
-                        <TableRow key={orcamento.id}>
-                            <TableCell className="font-medium">{orcamento.paciente.identificador}</TableCell>
-                            <TableCell>{formatarCPF(orcamento.paciente.cpf)}</TableCell>
-                            <TableCell>
-                              {clientRendered && new Date(orcamento.dataCriacao).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                              })}
-                            </TableCell>
-                            <TableCell>
-                               <button
-                                onClick={() => setSelectedOrcamento(orcamento)}
-                                className="inline-flex items-center justify-center px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm font-medium hover:bg-secondary/80 transition-colors cursor-pointer"
-                              >
-                                {orcamento.medicamentos.length} {orcamento.medicamentos.length === 1 ? 'item' : 'itens'}
-                              </button>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" size="icon" className="rounded-full" onClick={() => handleEdit(orcamento.id)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="icon" className="rounded-full" disabled={deletingId === orcamento.id}>
-                                        {deletingId === orcamento.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta ação não pode ser desfeita. Isso excluirá permanentemente o orçamento de
-                                        "{orcamento.paciente.identificador}".
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(orcamento.id!)}>Excluir</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </TableCell>
-                        </TableRow>
-                    ))
-                  )}
-              </TableBody>
-          </Table>
-        </div>
-        {hasMore && !loading && (
+  const formatCurrency = useMemo(() => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  }, []);
+
+  if (loading && orcamentos.length === 0) {
+    return <TabelaOrcamentosSkeleton />;
+  }
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {orcamentos.map((orc) => (
+          <div key={orc.id} className="bg-card border rounded-lg overflow-hidden">
+            <div
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+              onClick={() => setExpandedId(expandedId === orc.id ? null : orc.id)}
+            >
+              <div className="flex-1">
+                <p className="font-semibold text-sm">{orc.paciente.identificador}</p>
+                <p className="text-xs text-muted-foreground">
+                  {clientRendered && new Date(orc.dataCriacao).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              <ChevronDown className={`h-5 w-5 transition-transform ${expandedId === orc.id ? 'rotate-180' : ''}`} />
+            </div>
+
+            {expandedId === orc.id && (
+              <div className="border-t bg-muted/30 p-4 space-y-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">CPF</p>
+                  <p className="text-sm font-medium">{formatarCPF(orc.paciente.cpf)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Medicamentos ({orc.medicamentos.length})</p>
+                  <div className="space-y-2">
+                    {orc.medicamentos.map((med) => (
+                      <div key={med.id || med.nome} className="bg-background p-2 rounded text-xs border">
+                        <div className="flex justify-between">
+                          <p className="font-medium flex-1 pr-2">{med.nome}</p>
+                          <p className="font-semibold text-primary">{formatCurrency.format(med.valorUnitario)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => handleEdit(orc.id)}>
+                    <Pencil className="h-4 w-4 mr-2" /> Editar
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" className="flex-1 rounded-full h-10" disabled={deletingId === orc.id}>
+                        {deletingId === orc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Deletar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(orc.id)}>Excluir</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+         {hasMore && (
           <div className="flex justify-center mt-4">
             <Button onClick={() => loadOrcamentos()} disabled={loadingMore}>
               {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -230,20 +243,80 @@ export function TabelaOrcamentos() {
             </Button>
           </div>
         )}
-        {selectedOrcamento && (
-          <Suspense fallback={<div>Carregando modal...</div>}>
-            <MedicamentosModal
-              open={!!selectedOrcamento}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setSelectedOrcamento(null);
-                }
-              }}
-              medicamentos={selectedOrcamento.medicamentos}
-              pacienteName={selectedOrcamento.paciente.identificador}
-            />
-          </Suspense>
-        )}
-      </>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableCaption>
+            {!loading && orcamentos.length === 0 && "Nenhum orçamento criado."}
+            {loading && orcamentos.length === 0 && "Carregando orçamentos..."}
+          </TableCaption>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-[30%]">Paciente</TableHead>
+              <TableHead className="w-[20%]">CPF</TableHead>
+              <TableHead className="w-[20%]">Data Criação</TableHead>
+              <TableHead className="w-[15%]">Medicamentos</TableHead>
+              <TableHead className="text-right w-[15%]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orcamentos.map(orcamento => (
+              <TableRow key={orcamento.id}>
+                <TableCell className="font-medium">{orcamento.paciente.identificador}</TableCell>
+                <TableCell>{formatarCPF(orcamento.paciente.cpf)}</TableCell>
+                <TableCell>
+                  {clientRendered && new Date(orcamento.dataCriacao).toLocaleDateString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                  })}
+                </TableCell>
+                <TableCell>
+                  <MedicamentosAdaptive
+                    pacienteName={orcamento.paciente.identificador}
+                    medicamentos={orcamento.medicamentos}
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => handleEdit(orcamento.id)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="icon" className="rounded-full" disabled={deletingId === orcamento.id}>
+                          {deletingId === orcamento.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(orcamento.id)}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {hasMore && !loading && (
+        <div className="flex justify-center mt-4">
+          <Button onClick={() => loadOrcamentos()} disabled={loadingMore}>
+            {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Carregar mais
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
