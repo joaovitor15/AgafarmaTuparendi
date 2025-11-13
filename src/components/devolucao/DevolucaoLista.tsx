@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { Devolucao } from '@/types';
 import {
   Accordion,
@@ -51,7 +50,7 @@ export function DevolucaoLista({
       const statusSet = new Set(devolucoes.map(d => d.status));
       if (statusSet.size === 1) {
           const status = statusSet.values().next().value;
-          return statusConfig[status].label;
+          return statusConfig[status]?.label || 'Status Desconhecido';
       }
       return 'Múltiplos Status';
   }
@@ -76,7 +75,7 @@ export function DevolucaoLista({
 
         return (
           <AccordionItem value={notaFiscal} key={notaFiscal} className="border bg-card rounded-lg overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors w-full">
               <div className="flex items-center justify-between w-full">
                 <div className='text-left'>
                   <p className="text-sm text-muted-foreground">Nota Fiscal</p>
@@ -111,8 +110,8 @@ export function DevolucaoLista({
                           <TableCell className='font-medium'>{dev.produto}</TableCell>
                           <TableCell>{dev.quantidade}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={cn('border-2', config.badgeClassName)}>
-                              {config.label}
+                            <Badge variant="outline" className={cn('border-2', config?.badgeClassName)}>
+                              {config?.label || dev.status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
