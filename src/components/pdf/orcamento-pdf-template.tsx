@@ -137,7 +137,7 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
             {assinatura.cidade}, {dataFormatada}
           </p>
 
-          <div style={{ height: '80pt' }}></div>
+          <div style={{ height: '20pt' }}></div>
           
           <p style={{ fontSize: '11px', textAlign: 'center', marginBottom: '4pt', lineHeight: 1 }} >
             {assinatura.linha}
