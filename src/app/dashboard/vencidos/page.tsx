@@ -1,261 +1,247 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Plus, Trash2, X, FileDown, Loader2 } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlusCircle, Loader2, Pencil, Trash2, FileText, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
+import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { formatarCPF } from '@/lib/formatters';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import type { VencidoItem } from '@/types/vencido';
 
-// Estrutura de dados para um item vencido
-interface VencidoItem {
-  id: string;
-  medicamento: string;
-  laboratorio: string;
-  quantidade: number;
-  lote: string;
-  codigoBarras: string;
-  msRegistro: string;
-  ncm: string;
-  cest: string;
-  cfop: string;
-  precoUnitario: number;
-}
+const TabelaVencidosSkeleton = () => (
+  <div className="border rounded-lg overflow-hidden">
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/50 hover:bg-muted/50">
+          <TableHead className="w-[25%]"><Skeleton className="h-4 w-2/3" /></TableHead>
+          <TableHead><Skeleton className="h-4 w-1/2" /></TableHead>
+          <TableHead><Skeleton className="h-4 w-1/2" /></TableHead>
+          <TableHead><Skeleton className="h-4 w-1/3" /></TableHead>
+          <TableHead className="text-right"><Skeleton className="h-4 w-1/4 ml-auto" /></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <TableRow key={index}>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+            <TableCell className="text-right space-x-2">
+              <Skeleton className="h-10 w-10 inline-block rounded-full" />
+              <Skeleton className="h-10 w-10 inline-block rounded-full" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
 
-// Estado inicial para o formulário
-const initialFormState: Omit<VencidoItem, 'id'> = {
-  medicamento: '',
-  laboratorio: '',
-  quantidade: 1,
-  lote: '',
-  codigoBarras: '',
-  msRegistro: '',
-  ncm: '',
-  cest: '',
-  cfop: '',
-  precoUnitario: 0,
-};
+const PAGE_SIZE = 15;
 
-// Componente da página de Vencidos
 export default function VencidosPage() {
-  const [formData, setFormData] = useState(initialFormState);
-  const [items, setItems] = useState<VencidoItem[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loadingPDF, setLoadingPDF] = useState(false);
-
-  const totalCalculado = useMemo(() => {
-    return (formData.quantidade || 0) * (formData.precoUnitario || 0);
-  }, [formData.quantidade, formData.precoUnitario]);
-
-  const handleInputChange = (field: keyof typeof initialFormState, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleValorChange = (rawValue: string) => {
-    let value = rawValue.replace(/\D/g, '');
-    if (value === '') {
-      handleInputChange('precoUnitario', 0);
+  const [vencidos, setVencidos] = useState<VencidoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  const fetchVencidos = useCallback(async (initial = false) => {
+    if (!user) {
+      setLoading(false);
       return;
     }
-    const numericValue = parseInt(value) / 100;
-    handleInputChange('precoUnitario', numericValue);
-  };
+
+    if (initial) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const vencidosCollection = collection(db, `users/${user.uid}/vencidos`);
+      let q;
+
+      if (lastDoc && !initial) {
+        q = query(vencidosCollection, orderBy('dataCriacao', 'desc'), startAfter(lastDoc), limit(PAGE_SIZE));
+      } else {
+        q = query(vencidosCollection, orderBy('dataCriacao', 'desc'), limit(PAGE_SIZE));
+      }
+
+      const snapshot = await getDocs(q);
+      const newDocs = snapshot.docs;
+      const newVencidos = newDocs.map(doc => ({ id: doc.id, ...doc.data() } as VencidoItem));
+      
+      setVencidos(prev => initial ? newVencidos : [...prev, ...newVencidos]);
+      
+      if (newDocs.length < PAGE_SIZE) setHasMore(false);
+      if (newDocs.length > 0) setLastDoc(newDocs[newDocs.length - 1]);
+
+    } catch (err) {
+      console.error("Erro ao buscar vencidos: ", err);
+      toast({ variant: "destructive", title: "Erro ao carregar dados" });
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [user, lastDoc, toast]);
   
-  const formatValorParaInput = (value: number): string => {
-    if (!value || value === 0) return '';
-    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(value);
-  };
+  useEffect(() => {
+    if(user) fetchVencidos(true);
+  }, [user]);
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.medicamento.trim()) newErrors.medicamento = 'Medicamento é obrigatório';
-    if (!formData.laboratorio.trim()) newErrors.laboratorio = 'Laboratório é obrigatório';
-    if ((formData.quantidade || 0) <= 0) newErrors.quantidade = 'Qtd. deve ser > 0';
-    if (!formData.lote.trim()) newErrors.lote = 'Lote é obrigatório';
-    if (!formData.codigoBarras.trim()) newErrors.codigoBarras = 'Código de Barras é obrigatório';
-    if (!formData.msRegistro.trim()) newErrors.msRegistro = 'MS Registro é obrigatório';
-    if (!formData.ncm.trim()) newErrors.ncm = 'NCM é obrigatório';
-    if (!formData.cest.trim()) newErrors.cest = 'CEST é obrigatório';
-    if (!formData.cfop.trim()) newErrors.cfop = 'CFOP é obrigatório';
-    if ((formData.precoUnitario || 0) <= 0) newErrors.precoUnitario = 'Preço deve ser > 0';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleAddItem = () => {
-    if (validate()) {
-      setItems(prev => [{ id: uuidv4(), ...formData }, ...prev]);
-      handleClearForm();
-      document.getElementById('medicamento')?.focus();
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    setDeletingId(id);
+    try {
+      await deleteDoc(doc(db, `users/${user.uid}/vencidos`, id));
+      setVencidos(prev => prev.filter(o => o.id !== id));
+      toast({ title: 'Item Excluído!', description: 'O item vencido foi removido.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro ao Excluir' });
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const handleRemoveItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
+  const totais = useMemo(() => {
+    const totalItens = vencidos.length;
+    const totalGeral = vencidos.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0);
+    return { totalItens, totalGeral };
+  }, [vencidos]);
   
-  const handleClearForm = () => {
-    setFormData(initialFormState);
-    setErrors({});
-  }
+  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  };
+  if (loading && vencidos.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Vencidos</h1>
+          <Skeleton className="h-10 w-48" />
+        </div>
+        <TabelaVencidosSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">VENCIDOS</h1>
-      
-      <Card>
-        <CardContent className="p-4 md:p-6 space-y-4">
-          {/* Linha 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-[30fr_25fr_20fr_20fr_5fr] gap-4 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="medicamento">Medicamento *</Label>
-              <Input id="medicamento" value={formData.medicamento} onChange={e => handleInputChange('medicamento', e.target.value)} placeholder="Nome do medicamento" className={cn(errors.medicamento && 'border-destructive')} />
-              {errors.medicamento && <p className="text-xs text-destructive">{errors.medicamento}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="laboratorio">Laboratório *</Label>
-              <Input id="laboratorio" value={formData.laboratorio} onChange={e => handleInputChange('laboratorio', e.target.value)} placeholder="Laboratório" className={cn(errors.laboratorio && 'border-destructive')} />
-              {errors.laboratorio && <p className="text-xs text-destructive">{errors.laboratorio}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="quantidade">Quantidade *</Label>
-              <Input id="quantidade" type="number" value={formData.quantidade} onChange={e => handleInputChange('quantidade', parseInt(e.target.value) || 1)} placeholder="Qtd" className={cn(errors.quantidade && 'border-destructive')} />
-              {errors.quantidade && <p className="text-xs text-destructive">{errors.quantidade}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="lote">Lote *</Label>
-              <Input id="lote" value={formData.lote} onChange={e => handleInputChange('lote', e.target.value)} placeholder="Número do Lote" className={cn(errors.lote && 'border-destructive')} />
-              {errors.lote && <p className="text-xs text-destructive">{errors.lote}</p>}
-            </div>
-          </div>
-          
-          {/* Linha 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-[40fr_55fr_5fr] gap-4 items-end">
-             <div className="space-y-1">
-              <Label htmlFor="codigoBarras">Código de Barras *</Label>
-              <Input id="codigoBarras" value={formData.codigoBarras} onChange={e => handleInputChange('codigoBarras', e.target.value)} placeholder="Código de Barras (EAN)" className={cn(errors.codigoBarras && 'border-destructive')} />
-              {errors.codigoBarras && <p className="text-xs text-destructive">{errors.codigoBarras}</p>}
-            </div>
-             <div></div>
-          </div>
-          
-          {/* Linha 3 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[35fr_20fr_20fr_20fr_5fr] gap-4 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="msRegistro">MS Registro ANVISA *</Label>
-              <Input id="msRegistro" value={formData.msRegistro} onChange={e => handleInputChange('msRegistro', e.target.value)} placeholder="MS Registro" className={cn(errors.msRegistro && 'border-destructive')} />
-               {errors.msRegistro && <p className="text-xs text-destructive">{errors.msRegistro}</p>}
-            </div>
-             <div className="space-y-1">
-              <Label htmlFor="ncm">NCM *</Label>
-              <Input id="ncm" value={formData.ncm} onChange={e => handleInputChange('ncm', e.target.value)} placeholder="NCM" className={cn(errors.ncm && 'border-destructive')} />
-              {errors.ncm && <p className="text-xs text-destructive">{errors.ncm}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cest">CEST *</Label>
-              <Input id="cest" value={formData.cest} onChange={e => handleInputChange('cest', e.target.value)} placeholder="CEST" className={cn(errors.cest && 'border-destructive')} />
-              {errors.cest && <p className="text-xs text-destructive">{errors.cest}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cfop">CFOP *</Label>
-              <Input id="cfop" value={formData.cfop} onChange={e => handleInputChange('cfop', e.target.value)} placeholder="CFOP" className={cn(errors.cfop && 'border-destructive')} />
-              {errors.cfop && <p className="text-xs text-destructive">{errors.cfop}</p>}
-            </div>
-          </div>
-          
-          {/* Linha 4 */}
-          <div className="grid grid-cols-1 md:grid-cols-[25fr_30fr_40fr_5fr] gap-4 items-end">
-            <div className="space-y-1">
-              <Label htmlFor="precoUnitario">Preço Unitário *</Label>
-              <Input id="precoUnitario" type="text" inputMode="decimal" value={formatValorParaInput(formData.precoUnitario)} onChange={e => handleValorChange(e.target.value)} placeholder="R$ 0,00" className={cn(errors.precoUnitario && 'border-destructive', 'text-right')} />
-              {errors.precoUnitario && <p className="text-xs text-destructive">{errors.precoUnitario}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label>Total</Label>
-              <Input value={formatCurrency(totalCalculado)} readOnly className="bg-muted/50 text-right font-bold" />
-            </div>
-            <div></div>
-            <Button size="icon" variant="ghost" className="text-muted-foreground hover:bg-muted/50 hover:text-destructive" onClick={handleClearForm}>
-              <X className="h-5 w-5"/>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">Vencidos</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={true}>
+              <FileText className="mr-2" />
+              Gerar PDF
             </Button>
+            <Link href="/dashboard/vencidos/novo">
+              <Button>
+                <PlusCircle className="mr-2" />
+                Adicionar Novo
+              </Button>
+            </Link>
           </div>
-          
-          <div className="pt-4">
-             <Button onClick={handleAddItem} className='w-full sm:w-auto'>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Item
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {items.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight">Itens Adicionados</h2>
-          {items.map((item, index) => (
-            <Card key={item.id} className="p-4 shadow-sm">
-                <div className="flex justify-between items-start">
-                    <div className='flex-1'>
-                        <h3 className="font-bold text-primary">Item {items.length - index}: {item.medicamento}</h3>
-                        <p className='text-sm text-muted-foreground'>{item.laboratorio}</p>
-                    </div>
-                     <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 -mt-2 -mr-2" onClick={() => handleRemoveItem(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2 mt-3 text-sm">
-                    <InfoDisplay label="Cód. Barras" value={item.codigoBarras} />
-                    <InfoDisplay label="Lote" value={item.lote} />
-                    <InfoDisplay label="MS Registro" value={item.msRegistro} />
-                    <InfoDisplay label="NCM" value={item.ncm} />
-                    <InfoDisplay label="CEST" value={item.cest} />
-                    <InfoDisplay label="CFOP" value={item.cfop} />
-                    <InfoDisplay label="Qtd." value={item.quantidade.toString()} />
-                    <InfoDisplay label="Preço Unit." value={formatCurrency(item.precoUnitario)} />
-                    <div className='font-bold'>
-                        <p className="text-xs text-muted-foreground">Total</p>
-                        <p className='text-base'>{formatCurrency(item.quantidade * item.precoUnitario)}</p>
-                    </div>
-                </div>
-            </Card>
-          ))}
         </div>
-      )}
 
-      {items.length === 0 && (
+      {vencidos.length === 0 ? (
          <div className="text-center py-10 border-2 border-dashed rounded-lg">
-            <p className="text-muted-foreground">Nenhum item adicionado ainda.</p>
+            <p className="text-muted-foreground">Nenhum medicamento vencido adicionado.</p>
+            <p className="text-sm text-muted-foreground">Clique em "+ Adicionar Novo" para começar.</p>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+             <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[20%]">Medicamento</TableHead>
+                    <TableHead>Lab</TableHead>
+                    <TableHead>Qtd</TableHead>
+                    <TableHead>Lote</TableHead>
+                    <TableHead>Cód. Barras</TableHead>
+                    <TableHead>Preço Unit</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vencidos.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium truncate max-w-xs">{item.medicamento}</TableCell>
+                      <TableCell>{item.laboratorio}</TableCell>
+                      <TableCell>{item.quantidade}</TableCell>
+                      <TableCell>{item.lote}</TableCell>
+                      <TableCell>{item.codigoBarras}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.precoUnitario)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(item.quantidade * item.precoUnitario)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button asChild variant="outline" size="icon" className="rounded-full">
+                            <Link href={`/dashboard/vencidos/${item.id}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="icon" className="rounded-full" disabled={deletingId === item.id}>
+                                {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar Deleção</AlertDialogTitle>
+                                <AlertDialogDescription>Tem certeza que deseja deletar este medicamento vencido?</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(item.id)}>Deletar</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+          <CardHeader className="flex-row justify-end items-center gap-4 text-right bg-muted/50 p-3 rounded-b-lg">
+             <p className="text-sm text-muted-foreground">Total de Itens: <span className="font-bold text-foreground">{totais.totalItens}</span></p>
+             <p className="text-sm text-muted-foreground">Total Geral: <span className="font-bold text-foreground">{formatCurrency(totais.totalGeral)}</span></p>
+          </CardHeader>
+        </Card>
+      )}
+       {hasMore && !loading && vencidos.length > 0 && (
+        <div className="flex justify-center mt-4">
+          <Button onClick={() => fetchVencidos()} disabled={loadingMore}>
+            {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Carregar mais"}
+          </Button>
         </div>
       )}
-
-       <div className="pt-4">
-        <Button disabled={items.length === 0 || loadingPDF}>
-            {loadingPDF ? <Loader2 className='h-4 w-4 animate-spin mr-2' /> : <FileDown className="mr-2 h-4 w-4" />}
-            Gerar PDF de Vencidos
-        </Button>
-      </div>
-
     </div>
   );
 }
-
-const InfoDisplay = ({ label, value }: { label: string; value: string }) => (
-    <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-medium text-foreground truncate">{value}</p>
-    </div>
-);

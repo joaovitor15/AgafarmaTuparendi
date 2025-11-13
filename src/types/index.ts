@@ -43,3 +43,6 @@ export interface Devolucao {
   dataColeta?: string;
   status: StatusDevolucao;
 }
+
+export * from './orcamento';
+export * from './vencido';
