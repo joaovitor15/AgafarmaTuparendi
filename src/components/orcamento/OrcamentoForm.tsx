@@ -38,7 +38,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!paciente.identificador.trim()) {
-      newErrors.paciente_identificador = 'Identificador do paciente é obrigatório.';
+      newErrors.paciente_identificador = 'Identificador do paciente é obrigatório';
     }
     if (medicamentos.length === 0) {
         newErrors.medicamentos = 'É necessário adicionar pelo menos um medicamento.';
