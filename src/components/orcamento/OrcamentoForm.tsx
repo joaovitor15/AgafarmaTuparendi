@@ -81,10 +81,10 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
         ...paciente,
         cpf: paciente.cpf?.replace(/\D/g, '') || '',
       },
-      medicamentos
+      medicamentos: medicamentos.map(({ id, ...med }) => med)
     };
 
-    await onSave(orcamentoData);
+    await onSave(orcamentoData as any);
     setIsSaving(false);
   };
 
@@ -117,17 +117,17 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
   };
 
   const onCancel = () => {
-    router.push('/dashboard/orcamento-judicial');
+    router.back();
   }
 
   const handleValorChange = (id: string, value: string) => {
-    let rawValue = value.replace(/\D/g, '');
-    let numericValue = Number(rawValue) / 100;
+    let rawValue = value.replace(/[^\d,]/g, '').replace(',', '.');
+    let numericValue = parseFloat(rawValue) || 0;
     handleMedicamentoChange(id, 'valorUnitario', numericValue);
   };
 
   const formatValorParaInput = (value: number): string => {
-    return (value * 100).toFixed(0);
+    return value > 0 ? value.toFixed(2).replace('.', ',') : '';
   };
   
   return (
@@ -192,14 +192,14 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                       id={`valor-item-${med.id}`}
                       type="text"
                       placeholder="0,00"
-                      value={med.valorUnitario > 0 ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(med.valorUnitario) : ''}
+                      value={formatValorParaInput(med.valorUnitario)}
                       onChange={(e) => handleValorChange(med.id, e.target.value)}
                       className={cn(errors[`med_valor_${med.id}`] && 'border-destructive', 'text-right')}
                       autoComplete="off"
                     />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10" disabled={medicamentos.length <= 1}>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 rounded-full h-10 w-10" disabled={medicamentos.length <= 1}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
@@ -227,7 +227,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                     {isEditing ? 'Salvar Alterações' : 'Salvar Orçamento'}
                 </Button>
                 
-                <Button variant="ghost" onClick={onCancel} className="text-destructive hover:text-destructive-foreground hover:bg-destructive">
+                <Button variant="ghost" onClick={onCancel}>
                     <X className="mr-2 h-4 w-4" />
                     Cancelar
                 </Button>
