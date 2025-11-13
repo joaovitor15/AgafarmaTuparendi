@@ -129,7 +129,7 @@ export default function EditarOrcamentoPage() {
     <div className="flex-1 flex flex-col p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/orcamento-judicial" passHref>
-          <Button variant="secondary" size="icon" className='rounded-full'>
+          <Button variant="outline" size="icon" className='rounded-full'>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
