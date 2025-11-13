@@ -22,13 +22,13 @@ export const statusConfig: Record<StatusDevolucao, {
   },
   aguardando_credito: {
     label: 'Aguardando Crédito',
-    description: 'O produto foi coletado. Preencha a data da coleta e aguarde o crédito do valor.',
+    description: 'O produto foi coletado. Aguarde o crédito do valor.',
     badgeClassName: 'bg-orange-100 text-orange-800 border-orange-300',
     icon: Banknote,
   },
   devolucao_finalizada: {
-    label: 'Finalizada',
-    description: 'O crédito foi recebido e o processo de devolução foi concluído com sucesso.',
+    label: 'Coleta Efetuada',
+    description: 'Aguarde o Crédito.',
     badgeClassName: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     icon: CheckCircle2,
   },
