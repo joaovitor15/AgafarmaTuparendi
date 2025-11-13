@@ -157,7 +157,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                 </div>
                  <div className="md:col-span-2 space-y-1">
                   <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
-                  <Input id={`valor-item-${med.id}`} type="number" step="0.01" min="0" placeholder="R$ 0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
+                  <Input id={`valor-item-${med.id}`} type="number" step="0.01" min="0" placeholder="0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10">
