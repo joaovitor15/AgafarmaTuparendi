@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import type { Devolucao, StatusDevolucao } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { DevolucaoFiltroDropdown } from './DevolucaoFiltroDropdown';
@@ -82,29 +81,27 @@ export function DevolucaoPanel() {
   const [devolucoes, setDevolucoes] = useState<Devolucao[]>(MOCK_DEVOLUCOES);
   const [filtros, setFiltros] = useState<StatusDevolucao[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
-  const [devolucaoEmEdicao, setDevolucaoEmEdicao] = useState<Devolucao | null>(null);
 
   const devolucoesFiltradas = useMemo(() => {
+    const devolucoesOrdenadas = [...devolucoes].sort((a, b) => new Date(b.dataRealizada).getTime() - new Date(a.dataRealizada).getTime());
     if (filtros.length === 0) {
-      return devolucoes;
+      return devolucoesOrdenadas;
     }
-    return devolucoes.filter((d) => filtros.includes(d.status));
+    return devolucoesOrdenadas.filter((d) => filtros.includes(d.status));
   }, [devolucoes, filtros]);
 
 
-  const handleAbrirModal = (devolucao?: Devolucao | null) => {
-    setDevolucaoEmEdicao(devolucao || null);
-    setModalAberto(true);
-  };
-  
-  const handleSalvarDevolucao = (devolucao: Devolucao) => {
-    if (devolucao.id) {
-      // Editar
-      setDevolucoes(devolucoes.map((d) => (d.id === devolucao.id ? devolucao : d)));
-    } else {
-      // Criar
-      setDevolucoes([...devolucoes, { ...devolucao, id: uuidv4() }]);
-    }
+  const handleSalvarDevolucao = (dadosIniciais: Partial<Devolucao>) => {
+    const novaDevolucao: Devolucao = {
+      id: uuidv4(),
+      produto: '', // Será preenchido depois
+      quantidade: 0, // Será preenchido depois
+      notaFiscal: dadosIniciais.notaFiscalEntrada || '', // Usando NF de entrada como agrupador inicial
+      ...dadosIniciais,
+      status: 'solicitacao_nfd',
+    } as Devolucao;
+
+    setDevolucoes(prev => [novaDevolucao, ...prev]);
     setModalAberto(false);
   };
 
@@ -127,7 +124,7 @@ export function DevolucaoPanel() {
               filtrosAtuais={filtros}
               onFiltroChange={setFiltros}
             />
-            <Button onClick={() => handleAbrirModal(null)} className='w-full sm:w-auto'>
+            <Button onClick={() => setModalAberto(true)} className='w-full sm:w-auto'>
               <PlusCircle className="mr-2 h-4 w-4" />
               Nova Devolução
             </Button>
@@ -144,8 +141,8 @@ export function DevolucaoPanel() {
          <DevolucaoModal
             open={modalAberto}
             onOpenChange={setModalAberto}
-            devolucao={devolucaoEmEdicao}
             onSave={handleSalvarDevolucao}
+            isCreating={true}
           />
       )}
     </div>

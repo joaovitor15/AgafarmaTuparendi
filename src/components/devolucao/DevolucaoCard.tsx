@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import type { Devolucao, StatusDevolucao } from '@/types';
+import { useState, useEffect } from 'react';
+import type { Devolucao } from '@/types';
 import { statusConfig, getEtapa, proximoStatus } from './statusConfig';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -20,10 +20,18 @@ interface DevolucaoCardProps {
 }
 
 export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    // Se a devolução acabou de ser criada (sem produto), expande por padrão
+    const [isExpanded, setIsExpanded] = useState(!devolucao.produto);
     const [showHistory, setShowHistory] = useState(false);
     const [formData, setFormData] = useState<Partial<Devolucao>>(devolucao);
     const [showAlertaNFD, setShowAlertaNFD] = useState(false);
+
+    useEffect(() => {
+        // Garante que o card se expanda se for criado sem produto
+        if (!devolucao.produto) {
+            setIsExpanded(true);
+        }
+    }, [devolucao.produto]);
 
     const config = statusConfig[devolucao.status];
     const etapa = getEtapa(devolucao.status);
@@ -32,7 +40,9 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
         const proximo = proximoStatus(devolucao.status);
         if (proximo) {
             onUpdate({ ...formData, status: proximo } as Devolucao);
-            setIsExpanded(false);
+            if (proximo === 'devolucao_finalizada') {
+                setIsExpanded(false);
+            }
         }
     };
     
@@ -42,14 +52,40 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
     }
 
     const renderEtapa1 = (readOnly = false) => (
-        <div className="space-y-4">
-             <InfoItem label="Data da Solicitação" value={new Date(devolucao.dataRealizada).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} />
-             <InfoItem label="Distribuidora" value={devolucao.distribuidora} />
-             <InfoItem label="Motivo" value={devolucao.motivo} />
-             <InfoItem label="NF de Entrada" value={devolucao.notaFiscalEntrada} />
-             {devolucao.protocolo && <InfoItem label="Protocolo" value={devolucao.protocolo} />}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <InfoItem label="Data da Solicitação" value={new Date(formData.dataRealizada).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} />
+             <InfoItem label="Distribuidora" value={formData.distribuidora} />
+             <InfoItem label="Motivo" value={formData.motivo} />
+             <InfoItem label="NF de Entrada" value={formData.notaFiscalEntrada} />
+             {formData.protocolo && <InfoItem label="Protocolo" value={formData.protocolo} />}
         </div>
     );
+    
+    const renderCompletarEtapa1 = () => (
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor={`produto-${devolucao.id}`}>Produto</Label>
+                    <Input id={`produto-${devolucao.id}`} name="produto" value={formData.produto || ''} onChange={handleInputChange} placeholder="Nome do medicamento" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor={`quantidade-${devolucao.id}`}>Quantidade</Label>
+                    <Input id={`quantidade-${devolucao.id}`} name="quantidade" type="number" value={formData.quantidade || ''} onChange={handleInputChange} placeholder="0" />
+                </div>
+            </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor={`notaFiscal-${devolucao.id}`}>NF Devolução (agrupador)</Label>
+                    <Input id={`notaFiscal-${devolucao.id}`} name="notaFiscal" value={formData.notaFiscal || ''} onChange={handleInputChange} placeholder="NF para agrupar itens" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor={`protocolo-${devolucao.id}`}>Protocolo (Opcional)</Label>
+                    <Input id={`protocolo-${devolucao.id}`} name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
+                </div>
+            </div>
+             <Button onClick={() => onUpdate(formData as Devolucao)}>Salvar Produto</Button>
+        </div>
+    )
 
     const renderEtapa2 = (readOnly = false) => (
         <div className="space-y-4">
@@ -90,6 +126,10 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
     );
 
     const renderEtapaAtual = () => {
+        if (!devolucao.produto && devolucao.status === 'solicitacao_nfd') {
+            return renderCompletarEtapa1();
+        }
+
         switch (devolucao.status) {
             case 'solicitacao_nfd':
                 return (
@@ -114,7 +154,8 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
 
     const renderHistorico = () => (
         <div className='space-y-6'>
-            {etapa > 1 && <EtapaHistorico numero={1} titulo="Solicitação NFD" concluida={true}>{renderEtapa1(true)}</EtapaHistorico>}
+            {etapa >= 1 && <EtapaHistorico numero={1} titulo="Dados Iniciais" concluida={true}>{renderEtapa1(true)}</EtapaHistorico>}
+            {etapa > 1 && devolucao.produto && <InfoItem label="Produto" value={`${devolucao.produto} (${devolucao.quantidade} un)`} />}
             {etapa > 2 && <EtapaHistorico numero={2} titulo="Aguardar Coleta" concluida={true}>{renderEtapa2(true)}</EtapaHistorico>}
             {etapa > 3 && <EtapaHistorico numero={3} titulo="Aguardando Crédito" concluida={true}>{renderEtapa3(true)}</EtapaHistorico>}
         </div>
@@ -124,8 +165,8 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
         <Card className={cn('overflow-hidden transition-all', isExpanded && 'shadow-lg')}>
             <CardHeader className='flex-row items-start justify-between gap-4 p-4 cursor-pointer hover:bg-muted/50' onClick={() => setIsExpanded(!isExpanded)}>
                 <div className='flex-1 space-y-1'>
-                    <p className='font-bold text-foreground'>{devolucao.produto} <span className='font-normal text-muted-foreground'>({devolucao.quantidade} un)</span></p>
-                    <p className='text-sm text-muted-foreground'>NF Devolução: {devolucao.notaFiscal} &bull; NF Entrada: {devolucao.notaFiscalEntrada}</p>
+                    <p className='font-bold text-foreground'>{devolucao.produto || 'Novo item - Adicionar produto'}</p>
+                    <p className='text-sm text-muted-foreground'>NF Devolução: {devolucao.notaFiscal || 'N/A'} &bull; NF Entrada: {devolucao.notaFiscalEntrada}</p>
                 </div>
                 <Badge variant="outline" className={cn('whitespace-nowrap border-2', config.badgeClassName)}>
                     <config.icon className="mr-1.5 h-3.5 w-3.5" />
@@ -151,7 +192,7 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
             {isExpanded && (
                 <CardFooter className="p-4 bg-muted/50 border-t flex-col sm:flex-row items-center justify-between gap-2">
                     <div className='flex items-center gap-2'>
-                        {etapa > 1 && (
+                        {etapa > 0 && (
                             <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
                                 {showHistory ? 'Ocultar Histórico' : 'Ver Histórico'}
                                 <ChevronDown className={cn('ml-1.5 h-4 w-4 transition-transform', showHistory && 'rotate-180')} />
@@ -176,7 +217,7 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir }: DevolucaoCardP
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                        {devolucao.status !== 'devolucao_finalizada' && (
+                        {devolucao.status !== 'devolucao_finalizada' && !(!devolucao.produto && devolucao.status === 'solicitacao_nfd') && (
                              <Button onClick={handleProximaEtapa}>
                                 {etapa === 3 ? 'Finalizar Devolução' : 'Próxima Etapa'}
                             </Button>
