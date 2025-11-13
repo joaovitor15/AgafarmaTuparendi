@@ -1,12 +1,19 @@
 'use client';
 
 import type { User } from 'firebase/auth';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { isEmailAuthorized } from '@/config/authorized-emails';
-import { useRouter } from 'next/navigation';
-import messages from '@/locales/messages.pt-br.json';
+import { createContext, useContext, ReactNode } from 'react';
+
+// Mock user data
+const mockUser: User = {
+  uid: 'mock-user-id',
+  email: 'mock@example.com',
+  emailVerified: true,
+  displayName: 'Usuário Mock',
+  isAnonymous: false,
+  photoURL: `https://i.pravatar.cc/150?u=mock-user-id`,
+  providerData: [],
+  metadata: {},
+} as User;
 
 interface AuthContextType {
   user: User | null;
@@ -19,58 +26,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      const authorized = isEmailAuthorized(currentUser?.email);
-      setIsAuthorized(authorized);
-      setLoading(false);
-      
-      if (currentUser && !authorized) {
-        // If user is logged in but not authorized, sign them out.
-        signOut(auth);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const signInWithGoogle = async () => {
-    setLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      if (!isEmailAuthorized(result.user.email)) {
-        await signOut(auth);
-        throw new Error('EMAIL_NOT_AUTHORIZED');
-      }
-      router.push('/dashboard');
-    } catch (error: any) {
-       if (error.message !== 'EMAIL_NOT_AUTHORIZED') {
-         console.error("Google Sign-In Error:", error);
-       }
-       throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signOutUser = async () => {
-    setLoading(true);
-    await signOut(auth);
-    setUser(null);
-    setIsAuthorized(false);
-    router.push('/login');
-    setLoading(false);
+  const value: AuthContextType = {
+    user: mockUser,
+    isAuthorized: true,
+    loading: false,
+    signInWithGoogle: async () => { console.log("Sign-in disabled."); },
+    signOutUser: async () => { console.log("Sign-out disabled."); },
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthorized, loading, signInWithGoogle, signOutUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
