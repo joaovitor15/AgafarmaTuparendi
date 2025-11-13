@@ -120,14 +120,28 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     router.back();
   }
 
-  const handleValorChange = (id: string, value: string) => {
-    let rawValue = value.replace(/[^\d,]/g, '').replace(',', '.');
-    let numericValue = parseFloat(rawValue) || 0;
-    handleMedicamentoChange(id, 'valorUnitario', numericValue);
+  const handleValorChange = (id: string, rawValue: string) => {
+    let value = rawValue.replace(/\D/g, '');
+    
+    if (value === '') {
+      handleMedicamentoChange(id, 'valorUnitario', 0);
+      return;
+    }
+
+    // Se a vírgula foi o último caractere digitado, adiciona um placeholder para centavos
+    if (rawValue.endsWith(',') || rawValue.endsWith('.')) {
+      value = value + '00';
+    }
+
+    let a = (parseInt(value) / 100);
+    handleMedicamentoChange(id, 'valorUnitario', a);
   };
 
   const formatValorParaInput = (value: number): string => {
-    return value > 0 ? value.toFixed(2).replace('.', ',') : '';
+    if (value === 0) return '';
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+    }).format(value);
   };
   
   return (
@@ -191,6 +205,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                     <Input
                       id={`valor-item-${med.id}`}
                       type="text"
+                      inputMode="decimal"
                       placeholder="0,00"
                       value={formatValorParaInput(med.valorUnitario)}
                       onChange={(e) => handleValorChange(med.id, e.target.value)}
@@ -199,7 +214,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                     />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 rounded-full h-10 w-10" disabled={medicamentos.length <= 1}>
+                    <Button variant="destructive" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="rounded-full" disabled={medicamentos.length <= 1}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </div>
@@ -221,7 +236,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
 
         <Card>
             <CardHeader><CardTitle>Ações</CardTitle></CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+            <CardContent className="flex flex-wrap items-center gap-2">
                  <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {isEditing ? 'Salvar Alterações' : 'Salvar Orçamento'}
@@ -243,3 +258,5 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     </form>
   );
 }
+
+    
