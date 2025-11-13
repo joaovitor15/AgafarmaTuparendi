@@ -2,19 +2,25 @@
 
 import { db } from '@/lib/firebase';
 import type { Orcamento } from '@/types/orcamento';
-import { doc, setDoc, collection, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 
 const ORCAMENTO_COLLECTION = 'orcamentoJudicial';
 
 /**
  * Adiciona um novo orçamento no Firestore para um usuário específico.
  * @param userId - O ID do usuário.
- * @param orcamento - O objeto de orçamento a ser salvo.
+ * @param orcamentoData - O objeto de orçamento a ser salvo, sem o ID.
  */
-export const addOrcamento = async (userId: string, orcamento: Orcamento): Promise<void> => {
+export const addOrcamento = async (userId: string, orcamentoData: Omit<Orcamento, 'id'>): Promise<void> => {
   try {
-    const orcamentoDocRef = doc(db, 'users', userId, ORCAMENTO_COLLECTION, orcamento.id);
-    await setDoc(orcamentoDocRef, orcamento);
+    const newId = uuidv4();
+    const orcamentoComId: Orcamento = {
+        ...orcamentoData,
+        id: newId,
+    }
+    const orcamentoDocRef = doc(db, 'users', userId, ORCAMENTO_COLLECTION, newId);
+    await setDoc(orcamentoDocRef, orcamentoComId);
   } catch (error) {
     console.error("Erro ao adicionar orçamento: ", error);
     throw new Error('Falha ao salvar o orçamento.');

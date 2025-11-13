@@ -9,8 +9,10 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrcamento, updateOrcamento } from '@/services/orcamentoService';
+import { getOrcamento, addOrcamento } from '@/services/orcamentoService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function EditarOrcamentoPage() {
   const router = useRouter();
@@ -69,16 +71,25 @@ export default function EditarOrcamentoPage() {
     }
 
     try {
-      const finalData = {
+      const finalData: Omit<Orcamento, 'id'> = {
         ...orcamentoData,
+        dataCriacao: new Date().toISOString(), // Simula a "recriação"
         dataUltimaEdicao: new Date().toISOString(),
+        usuarioId: user.uid,
+        status: 'ativo',
       };
-      await updateOrcamento(user.uid, orcamentoId, finalData);
+      // 1. Adiciona o novo orçamento "alterado"
+      await addOrcamento(user.uid, finalData);
+      
+      // 2. Deleta o orçamento antigo
+      await deleteDoc(doc(db, `users/${user.uid}/orcamentoJudicial`, orcamentoId));
+
       toast({
         title: 'Orçamento Atualizado!',
-        description: 'As alterações foram salvas com sucesso.',
+        description: 'O orçamento foi alterado e movido para o topo da lista.',
       });
       router.push('/dashboard/orcamento-judicial');
+      router.refresh();
     } catch (error) {
       console.error("Erro ao atualizar orçamento: ", error);
       toast({
@@ -134,7 +145,7 @@ export default function EditarOrcamentoPage() {
           </Button>
         </Link>
         <div>
-            <h1 className="text-2xl font-bold tracking-tight">Editar Orçamento</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Alterar Orçamento</h1>
             <p className="text-muted-foreground">Paciente: {orcamento?.paciente.identificador}</p>
         </div>
       </div>

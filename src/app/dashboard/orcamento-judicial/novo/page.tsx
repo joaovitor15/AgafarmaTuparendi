@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { v4 as uuidv4 } from 'uuid';
 import { OrcamentoForm } from '@/components/orcamento/OrcamentoForm';
 import type { Orcamento } from '@/types/orcamento';
 import { ArrowLeft } from 'lucide-react';
@@ -16,7 +15,7 @@ export default function NovoOrcamentoPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const handleSaveOrcamento = async (orcamentoData: Omit<Orcamento, 'id'>) => {
+  const handleSaveOrcamento = async (orcamentoData: Omit<Orcamento, 'id' | 'dataCriacao' | 'status' | 'usuarioId'>) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -26,9 +25,8 @@ export default function NovoOrcamentoPage() {
       return;
     }
 
-    const orcamentoComId: Orcamento = { 
+    const orcamentoCompleto: Omit<Orcamento, 'id'> = { 
       ...orcamentoData, 
-      id: uuidv4(),
       usuarioId: user.uid,
       dataCriacao: new Date().toISOString(),
       dataUltimaEdicao: new Date().toISOString(),
@@ -36,12 +34,13 @@ export default function NovoOrcamentoPage() {
     };
 
     try {
-      await addOrcamento(user.uid, orcamentoComId);
+      await addOrcamento(user.uid, orcamentoCompleto);
       toast({
         title: 'Orçamento Criado!',
         description: 'O novo orçamento foi salvo com sucesso.',
       });
       router.push('/dashboard/orcamento-judicial');
+      router.refresh(); // Força a atualização da lista na página do dashboard
     } catch (error) {
       console.error("Erro ao salvar orçamento: ", error);
       toast({

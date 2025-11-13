@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
-import { Pencil, Trash2, Loader2, ChevronDown } from 'lucide-react';
+import { Pencil, Trash2, Loader2, ChevronDown, Copy } from 'lucide-react';
 import type { Orcamento } from '@/types/orcamento';
 import {
   AlertDialog,
@@ -26,6 +25,8 @@ import { useRouter } from 'next/navigation';
 import { formatarCPF } from '@/lib/formatters';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MedicamentosAdaptive } from './MedicamentosAdaptive';
+import { ReutilizarModal } from './ReutilizarModal';
+import { addOrcamento } from '@/services/orcamentoService';
 
 const TabelaOrcamentosSkeleton = () => (
   <div className="border rounded-lg overflow-hidden">
@@ -68,13 +69,14 @@ export function TabelaOrcamentos() {
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const loadOrcamentos = useCallback(async (initial = false) => {
+  const fetchOrcamentos = useCallback(async (initial = false) => {
     if (!user) {
       setLoading(false);
       return;
@@ -130,7 +132,7 @@ export function TabelaOrcamentos() {
   useEffect(() => {
     setClientRendered(true);
     if(user) {
-      loadOrcamentos(true);
+      fetchOrcamentos(true);
     }
   }, [user]);
 
@@ -167,8 +169,51 @@ export function TabelaOrcamentos() {
     });
   }, []);
 
+  const handleDuplicar = async (orcamento: Orcamento) => {
+    if (!user) {
+      showError('Você precisa estar logado para realizar esta ação.');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+        const { id, usuarioId, ...dadosAntigos } = orcamento;
+
+        const novoOrcamento = {
+          ...dadosAntigos,
+          dataCriacao: new Date().toISOString(),
+          dataUltimaEdicao: new Date().toISOString(),
+          status: 'ativo' as const,
+        }
+
+        await addOrcamento(user.uid, novoOrcamento as any);
+        await deleteDoc(doc(db, `users/${user.uid}/orcamentoJudicial`, id));
+        
+        toast({ title: 'Orçamento duplicado com sucesso!' });
+        await fetchOrcamentos(true); // Recarrega a lista
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Erro ao duplicar orçamento' });
+        console.error(err);
+    } finally {
+        setLoading(false);
+        setSelectedOrcamento(null);
+    }
+  };
+
+
   if (loading && orcamentos.length === 0) {
     return <TabelaOrcamentosSkeleton />;
+  }
+  
+  if (orcamentos.length === 0) {
+    return (
+        <div className="text-center py-10">
+            <p className="text-muted-foreground">Nenhum orçamento criado ainda.</p>
+            <Button className="mt-4" onClick={() => router.push('/dashboard/orcamento-judicial/novo')}>
+                Criar Primeiro Orçamento
+            </Button>
+        </div>
+    );
   }
 
   if (isMobile) {
@@ -212,6 +257,9 @@ export function TabelaOrcamentos() {
                   <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => handleEdit(orc.id)}>
                     <Pencil className="h-4 w-4 mr-2" /> Editar
                   </Button>
+                   <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => setSelectedOrcamento(orc)}>
+                    <Copy className="h-4 w-4 mr-2" /> Reutilizar
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button size="sm" variant="destructive" className="flex-1 rounded-full h-10" disabled={deletingId === orc.id}>
@@ -237,11 +285,20 @@ export function TabelaOrcamentos() {
         ))}
          {hasMore && (
           <div className="flex justify-center mt-4">
-            <Button onClick={() => loadOrcamentos()} disabled={loadingMore}>
+            <Button onClick={() => fetchOrcamentos()} disabled={loadingMore}>
               {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Carregar mais
             </Button>
           </div>
+        )}
+         {selectedOrcamento && (
+          <ReutilizarModal
+            open={!!selectedOrcamento}
+            onOpenChange={() => setSelectedOrcamento(null)}
+            orcamento={selectedOrcamento}
+            onDuplicar={handleDuplicar}
+            loading={loading}
+          />
         )}
       </div>
     );
@@ -258,10 +315,10 @@ export function TabelaOrcamentos() {
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead className="w-[30%]">Paciente</TableHead>
-              <TableHead className="w-[20%]">CPF</TableHead>
-              <TableHead className="w-[20%]">Data Criação</TableHead>
+              <TableHead className="w-[15%]">CPF</TableHead>
+              <TableHead className="w-[15%]">Data Criação</TableHead>
               <TableHead className="w-[15%]">Medicamentos</TableHead>
-              <TableHead className="text-right w-[15%]">Ações</TableHead>
+              <TableHead className="text-right w-[25%]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -284,6 +341,9 @@ export function TabelaOrcamentos() {
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="icon" className="rounded-full" onClick={() => handleEdit(orcamento.id)}>
                       <Pencil className="h-4 w-4" />
+                    </Button>
+                     <Button variant="outline" size="icon" className="rounded-full" onClick={() => setSelectedOrcamento(orcamento)}>
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -311,11 +371,20 @@ export function TabelaOrcamentos() {
       </div>
       {hasMore && !loading && (
         <div className="flex justify-center mt-4">
-          <Button onClick={() => loadOrcamentos()} disabled={loadingMore}>
+          <Button onClick={() => fetchOrcamentos()} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Carregar mais
           </Button>
         </div>
+      )}
+       {selectedOrcamento && (
+        <ReutilizarModal
+          open={!!selectedOrcamento}
+          onOpenChange={() => setSelectedOrcamento(null)}
+          orcamento={selectedOrcamento}
+          onDuplicar={handleDuplicar}
+          loading={loading}
+        />
       )}
     </>
   );
