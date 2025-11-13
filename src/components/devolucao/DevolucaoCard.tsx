@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Devolucao, DevolucaoProduto } from '@/types';
+import type { Devolucao } from '@/types';
 import { statusConfig, getEtapa, proximoStatus } from './statusConfig';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -42,9 +42,32 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
     };
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     }
+
+    const handleValorChange = (name: 'nfdValor', rawValue: string) => {
+        let value = rawValue.replace(/\D/g, '');
+        
+        if (value === '') {
+            setFormData(prev => ({ ...prev, [name]: 0 }));
+            return;
+        }
+
+        if (rawValue.endsWith(',') || rawValue.endsWith('.')) {
+            value = value + '00';
+        }
+
+        const numericValue = (parseInt(value) / 100);
+        setFormData(prev => ({ ...prev, [name]: numericValue }));
+    };
+
+    const formatValorParaInput = (value: number | undefined): string => {
+        if (!value) return '';
+        return new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: 2,
+        }).format(value);
+    };
 
     const renderEtapa1ReadOnly = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -66,15 +89,6 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
         </div>
     );
 
-    const renderEtapa1Inputs = () => (
-         <div className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor={`protocolo-${devolucao.id}`}>Protocolo</Label>
-                <Input id={`protocolo-${devolucao.id}`} name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
-            </div>
-        </div>
-    );
-
     const renderEtapa2Inputs = () => (
         <div className="space-y-4">
             {showAlertaNFD && (
@@ -91,11 +105,15 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
             </div>
             <div className="space-y-2">
                 <Label htmlFor={`nfdValor-${devolucao.id}`}>Valor NFD</Label>
-                <Input id={`nfdValor-${devolucao.id}`} name="nfdValor" type="number" placeholder="R$" value={formData.nfdValor || ''} onChange={handleInputChange} />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor={`nfSaida-${devolucao.id}`}>NF Saída</Label>
-                <Input id={`nfSaida-${devolucao.id}`} name="nfSaida" value={formData.nfSaida || ''} onChange={handleInputChange} />
+                <Input 
+                  id={`nfdValor-${devolucao.id}`}
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="R$ 0,00" 
+                  value={formatValorParaInput(formData.nfdValor)} 
+                  onChange={(e) => handleValorChange('nfdValor', e.target.value)} 
+                  className='text-right'
+                />
             </div>
         </div>
     );
@@ -168,7 +186,6 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InfoItem label="NFD Número" value={devolucao.nfdNumero || 'N/A'} />
                         <InfoItem label="Valor NFD" value={devolucao.nfdValor ? `R$ ${devolucao.nfdValor.toFixed(2)}` : 'N/A'} />
-                        <InfoItem label="NF Saída" value={devolucao.nfSaida || 'N/A'} />
                     </div>
                 </EtapaHistorico>
             );

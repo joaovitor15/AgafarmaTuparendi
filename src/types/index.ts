@@ -40,7 +40,6 @@ export interface Devolucao {
   protocolo?: string;
   nfdNumero?: string;
   nfdValor?: number;
-  nfSaida?: string;
   dataColeta?: string;
   status: StatusDevolucao;
 }
