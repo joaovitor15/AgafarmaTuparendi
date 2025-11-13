@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { formatCpf } from '@/lib/masks';
 
 interface OrcamentoFormProps {
-  onSave: (orcamento: Omit<Orcamento, 'id'>) => void;
+  onSave: (orcamento: Omit<Orcamento, 'id'>) => Promise<void>;
   initialData?: Omit<Orcamento, 'id'>;
   isEditing?: boolean;
 }
@@ -31,7 +31,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
   const [paciente, setPaciente] = useState(initialData?.paciente || { identificador: '', cpf: '' });
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>(
     initialData?.medicamentos && initialData.medicamentos.length > 0
-      ? initialData.medicamentos
+      ? initialData.medicamentos.map(med => ({ ...med, id: med.id || uuidv4() }))
       : [{ id: uuidv4(), ...initialMedicamento }]
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,7 +57,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     
     setIsSaving(true);
@@ -69,11 +69,8 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
       medicamentos
     };
 
-    onSave(orcamentoData);
-    // O redirecionamento e toast são controlados pela página pai
-    // setTimeout(() => {
-    //     setIsSaving(false);
-    // }, 1000);
+    await onSave(orcamentoData);
+    setIsSaving(false);
   };
 
   const handleAddMedicamento = () => {
@@ -84,7 +81,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     setMedicamentos(medicamentos.filter(med => med.id !== id));
   };
   
-  const handleMedicamentoChange = (id: string, field: keyof Medicamento, value: string | number) => {
+  const handleMedicamentoChange = (id: string, field: keyof Omit<Medicamento, 'id'>, value: string | number) => {
     setMedicamentos(medicamentos.map(med => med.id === id ? { ...med, [field]: value } : med));
   };
 
