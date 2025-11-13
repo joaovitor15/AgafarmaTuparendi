@@ -39,7 +39,6 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
     <div
       id="pdf-content"
       style={{
-        position: 'relative',
         minHeight: '1122px', // Altura de uma página A4 em pixels (aproximado)
         padding: '35px 72px',
         fontFamily: 'Arial, sans-serif',
@@ -48,11 +47,9 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
         margin: '0 auto',
         color: '#000',
         background: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
-      <div style={{ flexGrow: 1 }}>
+      <div>
         {/* Título Principal */}
         <p style={{ fontSize: '18px', fontWeight: 'bold', textAlign: 'center', marginBottom: '9px' }} >
           {orcamentoTextos.tituloPrincipal}
@@ -100,7 +97,7 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
           }
           return (
             <p
-              key={med.id}
+              key={med.id || med.nome}
               style={{
                 fontSize: '11px',
                 textAlign: 'justify',
@@ -132,12 +129,12 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
       </div>
       
       {/* Seção de Assinatura */}
-      <div style={{ flexShrink: 0, marginTop: '20px', paddingTop: '10pt' }}>
+      <div style={{ marginTop: '20px', paddingTop: '10pt' }}>
           <p style={{ fontSize: '11px', textAlign: 'right', marginBottom: '8pt' }} >
             {assinatura.cidade}, {dataFormatada}
           </p>
 
-          <div style={{ height: '20pt' }}></div>
+          <div style={{ height: '70pt' }}></div>
           
           <p style={{ fontSize: '11px', textAlign: 'center', marginBottom: '4pt', lineHeight: 1 }} >
             {assinatura.linha}
