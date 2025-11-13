@@ -5,8 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
-import { TabelaOrcamentos } from '@/components/orcamento/TabelaOrcamentos';
 import { Skeleton } from '@/components/ui/skeleton';
+import dynamic from 'next/dynamic';
+
+const TabelaOrcamentos = dynamic(
+  () => import('@/components/orcamento/TabelaOrcamentos').then(mod => mod.TabelaOrcamentos),
+  { 
+    loading: () => <Skeleton className="h-64 w-full" />,
+    ssr: false 
+  }
+);
+
 
 export default function OrcamentoJudicialDashboardPage() {
   

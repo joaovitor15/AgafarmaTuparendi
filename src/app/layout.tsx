@@ -4,7 +4,10 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 
-const inter = Inter({ subsets: ['latin'], display: 'swap' });
+const inter = Inter({ 
+  subsets: ['latin'], 
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Agafarma Tuparendi',
