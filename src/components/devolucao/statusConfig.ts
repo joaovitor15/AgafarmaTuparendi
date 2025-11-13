@@ -30,7 +30,7 @@ export const statusConfig: Record<StatusDevolucao, {
     label: 'Coleta Efetuada',
     description: 'Aguarde o Crédito.',
     badgeClassName: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    icon: CheckCircle2,
+    icon: Truck,
   },
 };
 
