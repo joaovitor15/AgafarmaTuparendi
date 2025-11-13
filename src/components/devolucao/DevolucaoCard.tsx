@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Devolucao, DevolucaoProduto } from '@/types';
 import { statusConfig, getEtapa, proximoStatus } from './statusConfig';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
@@ -25,12 +25,6 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
     const [showHistory, setShowHistory] = useState(false);
     const [formData, setFormData] = useState<Partial<Devolucao>>(devolucao);
     const [showAlertaNFD, setShowAlertaNFD] = useState(false);
-    const [isEditing, setIsEditing] = useState(iniciaExpandido);
-
-    useEffect(() => {
-        setIsExpanded(iniciaExpandido);
-        setIsEditing(iniciaExpandido);
-    }, [iniciaExpandido]);
 
     const config = statusConfig[devolucao.status];
     const etapa = getEtapa(devolucao.status);
@@ -50,14 +44,6 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
-    }
-    
-    const handleSalvarEdicao = () => {
-        onUpdate(formData as Devolucao);
-        setIsEditing(false);
-        if (iniciaExpandido && devolucao.status === 'solicitacao_nfd') {
-            setIsExpanded(false);
-        }
     }
 
     const renderEtapa1 = (readOnly = false) => (
@@ -123,10 +109,9 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
             case 'solicitacao_nfd':
                 return (
                     <div className='flex flex-col items-center text-center gap-4 py-4'>
-                        <Loader2 className='h-12 w-12 text-amber-500 animate-spin' />
                          <div>
-                            <p className='font-semibold'>Aguardando NFD</p>
-                            <p className='text-sm text-muted-foreground'>Aguardando a distribuidora enviar a Nota Fiscal de Devolução.</p>
+                            <p className='font-semibold'>Complete os Dados da Solicitação</p>
+                            <p className='text-sm text-muted-foreground'>Adicione os produtos e outros detalhes para prosseguir.</p>
                         </div>
                     </div>
                 );
@@ -154,8 +139,8 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
         <Card className={cn('overflow-hidden transition-all', isExpanded && 'shadow-lg')}>
             <CardHeader className='flex-row items-start justify-between gap-4 p-4 cursor-pointer hover:bg-muted/50' onClick={() => setIsExpanded(!isExpanded)}>
                 <div className='flex-1 space-y-1'>
-                    <p className='font-bold text-foreground'>{totalProdutos > 1 ? `${totalProdutos} produtos` : produtoPrincipal}</p>
-                    <p className='text-sm text-muted-foreground'>NF Devolução: {devolucao.notaFiscal} &bull; NF Entrada: {devolucao.notaFiscalEntrada}</p>
+                    <p className='font-bold text-foreground'>{totalProdutos > 1 ? `${totalProdutos} produtos` : (produtoPrincipal || 'Devolução sem produto')}</p>
+                    <p className='text-sm text-muted-foreground'>NF Entrada: {devolucao.notaFiscalEntrada}</p>
                 </div>
                 <Badge variant="outline" className={cn('whitespace-nowrap border-2', config.badgeClassName)}>
                     <config.icon className="mr-1.5 h-3.5 w-3.5" />
