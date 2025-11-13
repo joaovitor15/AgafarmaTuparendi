@@ -7,7 +7,7 @@ import { PlusCircle, Loader2, Pencil, Trash2, FileText, Settings, AlertTriangle 
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -135,6 +135,7 @@ export default function VencidosPage() {
   
   useEffect(() => {
     if(user) fetchVencidos(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleDelete = async (id: string) => {
@@ -148,6 +149,28 @@ export default function VencidosPage() {
       toast({ variant: 'destructive', title: 'Erro ao Excluir' });
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const vencidosCollection = collection(db, `users/${user.uid}/vencidos`);
+      const snapshot = await getDocs(vencidosCollection);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      setVencidos([]);
+      setLastDoc(null);
+      setHasMore(false);
+      toast({ title: 'Tabela Limpa!', description: 'Todos os itens foram removidos.' });
+    } catch (error) {
+       toast({ variant: 'destructive', title: 'Erro ao limpar a tabela.' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,9 +306,31 @@ export default function VencidosPage() {
               </Table>
             </div>
           </CardContent>
-          <div className="flex-row justify-end items-center gap-4 text-right bg-muted/50 p-3 rounded-b-lg font-bold flex">
-             <p className="text-sm text-muted-foreground">Total de Itens: <span className="font-bold text-foreground">{totais.totalItens}</span></p>
-             <p className="text-sm text-muted-foreground">Total Geral: <span className="font-bold text-foreground">{formatCurrency(totais.totalGeral)}</span></p>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-right bg-muted/50 p-3 rounded-b-lg font-bold">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={vencidos.length === 0 || loading}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Limpar toda a tabela?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Todos os itens da lista de vencidos serão permanentemente excluídos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAll}>Sim, Limpar Tudo</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground">Total de Itens: <span className="font-bold text-foreground">{totais.totalItens}</span></p>
+              <p className="text-sm text-muted-foreground">Total Geral: <span className="font-bold text-foreground">{formatCurrency(totais.totalGeral)}</span></p>
+            </div>
           </div>
         </Card>
       )}

@@ -91,7 +91,7 @@ export function useGerarVencidosPDF() {
         head: head,
         body: body,
         theme: 'striped',
-        headStyles: { fillColor: [22, 160, 133] },
+        headStyles: { textColor: [0, 0, 0], lineWidth: 0.1 },
         columnStyles: {
             // Defina as larguras como achar melhor
             0: { cellWidth: 20 },
@@ -130,7 +130,7 @@ export function useGerarVencidosPDF() {
         head: head,
         body: body,
         theme: 'striped',
-        headStyles: { fillColor: [22, 160, 133] },
+        headStyles: { textColor: [0, 0, 0], lineWidth: 0.1 },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || doc.internal.pageSize.getHeight() - 50;
