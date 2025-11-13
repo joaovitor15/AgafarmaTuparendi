@@ -91,41 +91,79 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Devolucao",
       "type": "object",
-      "description": "Represents a return.",
+      "description": "Represents a medication return process with a 4-step workflow.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Devolucao entity."
         },
-        "numero": {
+        "notaFiscal": {
           "type": "string",
-          "description": "Return number."
+          "description": "The unique identifier for the return invoice, used for grouping."
         },
-        "cliente": {
+        "dataRealizada": {
           "type": "string",
-          "description": "Client name."
-        },
-        "dataDevolvido": {
-          "type": "string",
-          "description": "Date of the return.",
+          "description": "Date the return was requested.",
           "format": "date-time"
+        },
+        "distribuidora": {
+          "type": "string",
+          "description": "The distributor's name."
+        },
+        "produto": {
+          "type": "string",
+          "description": "Name of the returned medication."
+        },
+        "quantidade": {
+          "type": "number",
+          "description": "Quantity of the product being returned."
         },
         "motivo": {
           "type": "string",
           "description": "Reason for the return."
         },
-        "observacoes": {
+        "protocolo": {
           "type": "string",
-          "description": "Observations about the return."
+          "description": "Optional protocol number for the return."
+        },
+        "notaFiscalEntrada": {
+          "type": "string",
+          "description": "The original purchase invoice number."
+        },
+        "nfdNumero": {
+          "type": "string",
+          "description": "The return invoice number (NFD), provided by the distributor in Step 2."
+        },
+        "nfdValor": {
+          "type": "number",
+          "description": "The value of the return invoice (NFD), provided in Step 2."
+        },
+        "dataColeta": {
+          "type": "string",
+          "description": "The date the product was collected, filled in Step 3.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the return in the workflow.",
+          "enum": [
+            "solicitacao_nfd",
+            "aguardar_coleta",
+            "aguardando_credito",
+            "devolucao_finalizada"
+          ]
         }
       },
       "required": [
         "id",
-        "numero",
-        "cliente",
-        "dataDevolvido",
+        "notaFiscal",
+        "dataRealizada",
+        "distribuidora",
+        "produto",
+        "quantidade",
         "motivo",
-        "observacoes"
+        "notaFiscalEntrada",
+        "status"
       ]
     }
   },
@@ -198,6 +236,6 @@
         }
       }
     ],
-    "reasoning": "Given the requirements for the Agafarma Tuparendi application, particularly the need to restrict access to only two specific Gmail accounts and the nature of the data being managed (judicial budgets, expired processes, and returns), a path-based ownership structure is most appropriate to ensure simplicity and security. Since all data entities are likely associated with the user, nesting the collections under `/users/{userId}` provides a clear ownership model and eliminates the need for complex security rules involving `get()` calls. This approach inherently supports Authorization Independence. \n\nSpecifically, each collection (`orcamentoJudicial`, `vencidos`, and `devolucao`) will be created as a subcollection of `/users/{userId}`. This means that each user (identified by their `userId`) will have their own set of documents for each entity. This design inherently ensures that only the authorized user can access their respective data. \n\nThe application only supports two authorized users, and these users are validated during authentication. Therefore, we don't need complex role-based access control within Firestore. The security rules will simply check if `request.auth.uid` matches the `userId` in the path.\n\nThis structure supports the required QAPs by:\n\n1.  **Authorization Independence:** No `get()` calls are needed because access is determined solely by the user's ID in the path.\n2.  **Clarity of Intent:** The path structure `users/{userId}/{collectionName}/{documentId}` immediately conveys ownership.\n3.  **Rules are not Filters:** Secure `list` operations are naturally supported because the rules only allow access to documents within the user's own path segment. The data is segregated by user, avoiding the need to filter based on document content.\n\nThe denormalization strategy is applied implicitly by nesting all data under `/users/{userId}`. No explicit denormalization of user data into the documents is needed because the path itself establishes the user's ownership. If further roles or attributes were associated with users, they could be stored in a `/users/{userId}` document and, if needed for authorization in subcollections, denormalized into those subcollections.\n\nThis design assumes all entities are exclusively user-owned. If some data needed to be shared, a different structure (potentially involving a membership map) would be required for those shared entities."
+    "reasoning": "Given the requirements for the Agafarma Tuparendi application, particularly the need to restrict access to only two specific Gmail accounts and the nature of the data being managed (judicial budgets, expired processes, and returns), a path-based ownership structure is most appropriate to ensure simplicity and security. Since all data entities are likely associated with the user, nesting the collections under `/users/{userId}` provides a clear ownership model and eliminates the need for complex security rules involving `get()` calls. This approach inherently supports Authorization Independence. \n\nSpecifically, each collection (`orcamentoJudicial`, `vencidos`, and `devolucao`) will be created as a subcollection of `/users/{userId}`. This means that each user (identified by their `userId`) will have their own set of documents for each entity. This design inherently ensures that only the authorized user can access their respective data. \n\nThe application only supports two authorized users, and these users are validated during authentication. Therefore, we don't need complex role-based access control within Firestore. The security rules will simply check if `request.auth.uid` matches the `userId` in the path.\n\nThis structure supports the required QAPs by:\n\n1.  **Authorization Independence:** No `get()` calls are needed because access is determined solely by the user's ID in the path.\n2.  **Clarity of Intent:** The path structure `users/{userId}/{collectionName}/{documentId}` immediately conveys ownership.\n3.  **Rules are not Filters:** Secure `list` operations are naturally supported because the rules only allow access to documents within the user's own path segment. The data is segregated by user, avoiding the need to filter based on document content.\n\nThe denormalization strategy is applied implicitly by nesting all data under `/users/{userId}`. No explicit denormalization of user data into the documents is needed because the path itself establishes the user's ownership. If further roles or attributes were associated with users, they could be stored in a `/users/{userId}` document and, if needed for authorization in subcollections, denormalized into those subcollections.\n\nThis design assumes all entities are exclusively user-owned. If some data needed to be shared, a different structure (poten"
   }
 }
