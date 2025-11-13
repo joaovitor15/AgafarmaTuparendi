@@ -13,3 +13,11 @@ export interface VencidoItem {
   dataCriacao: string;
   dataUltimaEdicao: string;
 }
+
+export interface DestinatarioVencidos {
+  razaoSocial: string;
+  cnpj: string;
+  endereco: string;
+  cidade: string;
+  cep: string;
+}

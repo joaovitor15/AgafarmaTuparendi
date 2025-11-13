@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Loader2, Pencil, Trash2, FileText, ChevronDown } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { PlusCircle, Loader2, Pencil, Trash2, FileText, Settings, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,7 @@ import { collection, deleteDoc, doc, getDocs, limit, orderBy, query, QueryDocume
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,37 +23,38 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { formatarCPF } from '@/lib/formatters';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { VencidoItem } from '@/types/vencido';
+import type { VencidoItem, DestinatarioVencidos } from '@/types/vencido';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DestinatarioModal } from '@/components/vencidos/DestinatarioModal';
+import { useGerarVencidosPDF } from '@/hooks/use-gerar-vencidos-pdf';
+
 
 const TabelaVencidosSkeleton = () => (
-  <div className="border rounded-lg overflow-hidden">
-    <Table>
-      <TableHeader>
-        <TableRow className="bg-muted/50 hover:bg-muted/50">
-          <TableHead className="w-[25%]"><Skeleton className="h-4 w-2/3" /></TableHead>
-          <TableHead><Skeleton className="h-4 w-1/2" /></TableHead>
-          <TableHead><Skeleton className="h-4 w-1/2" /></TableHead>
-          <TableHead><Skeleton className="h-4 w-1/3" /></TableHead>
-          <TableHead className="text-right"><Skeleton className="h-4 w-1/4 ml-auto" /></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {Array.from({ length: 5 }).map((_, index) => (
-          <TableRow key={index}>
-            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-            <TableCell className="text-right space-x-2">
-              <Skeleton className="h-10 w-10 inline-block rounded-full" />
-              <Skeleton className="h-10 w-10 inline-block rounded-full" />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+  <div className="space-y-4">
+    <div className="flex gap-2">
+      <Skeleton className="h-10 w-36" />
+      <Skeleton className="h-10 w-36" />
+      <Skeleton className="h-10 w-48" />
+      <Skeleton className="h-10 w-48" />
+    </div>
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {Array.from({ length: 8 }).map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <TableRow key={index}>
+                {Array.from({ length: 8 }).map((_, i) => <TableCell key={i}><Skeleton className="h-5 w-full" /></TableCell>)}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   </div>
 );
 
@@ -66,11 +67,34 @@ export default function VencidosPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
+
+  const [destinatario, setDestinatario] = useState<DestinatarioVencidos | null>(null);
+  const [modalDestinatarioOpen, setModalDestinatarioOpen] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const { gerarPDF, loadingPDF } = useGerarVencidosPDF();
+
+  useEffect(() => {
+    try {
+      const savedDestinatario = localStorage.getItem('vencidos_destinatario');
+      if (savedDestinatario) {
+        setDestinatario(JSON.parse(savedDestinatario));
+      }
+    } catch (error) {
+      console.error("Failed to parse destinatario from localStorage", error);
+      localStorage.removeItem('vencidos_destinatario');
+    }
+  }, []);
+
+  const handleSaveDestinatario = (data: DestinatarioVencidos) => {
+    localStorage.setItem('vencidos_destinatario', JSON.stringify(data));
+    setDestinatario(data);
+    setModalDestinatarioOpen(false);
+    toast({ title: 'Destinatário salvo com sucesso!' });
+  };
   
   const fetchVencidos = useCallback(async (initial = false) => {
     if (!user) {
@@ -127,6 +151,19 @@ export default function VencidosPage() {
     }
   };
 
+  const handleGerarPDF = (tipo: 'Nota' | 'Descarte') => {
+    if (tipo === 'Nota' && !destinatario) {
+      toast({
+        variant: 'destructive',
+        title: 'Destinatário não informado',
+        description: 'Por favor, preencha os dados do destinatário antes de gerar o PDF da nota.',
+      });
+      setModalDestinatarioOpen(true);
+      return;
+    }
+    gerarPDF(vencidos, tipo, destinatario);
+  }
+
   const totais = useMemo(() => {
     const totalItens = vencidos.length;
     const totalGeral = vencidos.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0);
@@ -135,33 +172,50 @@ export default function VencidosPage() {
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+  const isPDFDisabled = vencidos.length === 0 || loadingPDF;
+
   if (loading && vencidos.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Vencidos</h1>
-          <Skeleton className="h-10 w-48" />
-        </div>
-        <TabelaVencidosSkeleton />
-      </div>
-    );
+    return <TabelaVencidosSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight">Vencidos</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={true}>
-              <FileText className="mr-2" />
-              Gerar PDF
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/dashboard/vencidos/novo">
               <Button>
                 <PlusCircle className="mr-2" />
                 Adicionar Novo
               </Button>
             </Link>
+            <Button variant="outline" onClick={() => setModalDestinatarioOpen(true)}>
+              <Settings className="mr-2" /> Destinatário
+            </Button>
+             <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-block">
+                    <Button variant="outline" onClick={() => handleGerarPDF('Nota')} disabled={isPDFDisabled}>
+                      <FileText className="mr-2" /> Gerar PDF - Nota (NFD)
+                      {loadingPDF && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {vencidos.length === 0 && <TooltipContent>Adicione itens para gerar o PDF</TooltipContent>}
+              </Tooltip>
+               <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-block">
+                    <Button variant="outline" onClick={() => handleGerarPDF('Descarte')} disabled={isPDFDisabled}>
+                      <Trash2 className="mr-2" /> Gerar PDF - Descarte
+                      {loadingPDF && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {vencidos.length === 0 && <TooltipContent>Adicione itens para gerar o PDF</TooltipContent>}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -179,11 +233,11 @@ export default function VencidosPage() {
                   <TableRow>
                     <TableHead className="w-[20%]">Medicamento</TableHead>
                     <TableHead>Lab</TableHead>
-                    <TableHead>Qtd</TableHead>
+                    <TableHead className='text-center'>Qtd</TableHead>
                     <TableHead>Lote</TableHead>
                     <TableHead>Cód. Barras</TableHead>
-                    <TableHead className="text-right tabular-nums">Preço Unit.</TableHead>
-                    <TableHead className="text-right tabular-nums">Total</TableHead>
+                    <TableHead className="w-40 text-right tabular-nums">Preço Unit.</TableHead>
+                    <TableHead className="w-40 text-right tabular-nums text-primary font-semibold">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -192,7 +246,7 @@ export default function VencidosPage() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium truncate max-w-xs">{item.medicamento}</TableCell>
                       <TableCell>{item.laboratorio}</TableCell>
-                      <TableCell>{item.quantidade}</TableCell>
+                      <TableCell className='text-center'>{item.quantidade}</TableCell>
                       <TableCell>{item.lote}</TableCell>
                       <TableCell>{item.codigoBarras}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCurrency(item.precoUnitario)}</TableCell>
@@ -229,10 +283,10 @@ export default function VencidosPage() {
               </Table>
             </div>
           </CardContent>
-          <CardHeader className="flex-row justify-end items-center gap-4 text-right bg-muted/50 p-3 rounded-b-lg">
+          <div className="flex-row justify-end items-center gap-4 text-right bg-muted/50 p-3 rounded-b-lg font-bold flex">
              <p className="text-sm text-muted-foreground">Total de Itens: <span className="font-bold text-foreground">{totais.totalItens}</span></p>
              <p className="text-sm text-muted-foreground">Total Geral: <span className="font-bold text-foreground">{formatCurrency(totais.totalGeral)}</span></p>
-          </CardHeader>
+          </div>
         </Card>
       )}
        {hasMore && !loading && vencidos.length > 0 && (
@@ -241,6 +295,15 @@ export default function VencidosPage() {
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Carregar mais"}
           </Button>
         </div>
+      )}
+
+      {modalDestinatarioOpen && (
+        <DestinatarioModal 
+          open={modalDestinatarioOpen}
+          onOpenChange={setModalDestinatarioOpen}
+          onSave={handleSaveDestinatario}
+          initialData={destinatario}
+        />
       )}
     </div>
   );
