@@ -47,7 +47,6 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
     <div
       id="pdf-content"
       style={{
-        minHeight: '1122px', // Altura de uma página A4 em pixels (aproximado)
         padding: '35px 72px',
         fontFamily: 'Arial, sans-serif',
         lineHeight: 1.5,
@@ -55,11 +54,9 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
         margin: '0 auto',
         color: '#000',
         background: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
-      <div style={{ flexGrow: 1 }}>
+      <div>
         {/* Título Principal */}
         <p style={{ fontSize: '18px', fontWeight: 'bold', textAlign: 'center', marginBottom: '9px' }} >
           {orcamentoTextos.tituloPrincipal}
