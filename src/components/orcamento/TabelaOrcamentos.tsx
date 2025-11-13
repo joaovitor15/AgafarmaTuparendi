@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow, TableCaption } from '@/components/ui/table';
-import { Pencil, Trash2, Loader2, ChevronDown, Copy } from 'lucide-react';
+import { Pencil, Trash2, Loader2, ChevronDown, Copy, FileText } from 'lucide-react';
 import type { Orcamento } from '@/types/orcamento';
 import {
   AlertDialog,
@@ -27,6 +27,9 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { MedicamentosAdaptive } from './MedicamentosAdaptive';
 import { ReutilizarModal } from './ReutilizarModal';
 import { addOrcamento } from '@/services/orcamentoService';
+import { useGerarPDFOrcamento } from '@/hooks/use-gerar-pdf-orcamento';
+import { OrcamentoPDFTemplate } from '@/components/pdf/orcamento-pdf-template';
+
 
 const TabelaOrcamentosSkeleton = () => (
   <div className="border rounded-lg overflow-hidden">
@@ -70,11 +73,13 @@ export function TabelaOrcamentos() {
   const [hasMore, setHasMore] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedOrcamento, setSelectedOrcamento] = useState<Orcamento | null>(null);
+  const [selectedOrcamentoParaPDF, setSelectedOrcamentoParaPDF] = useState<Orcamento | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const { gerarPDF, loading: loadingPDF } = useGerarPDFOrcamento();
 
   const fetchOrcamentos = useCallback(async (initial = false) => {
     if (!user) {
@@ -162,6 +167,16 @@ export function TabelaOrcamentos() {
     router.push(`/dashboard/orcamento-judicial/${id}`);
   };
 
+  const handleGerarPDF = (orcamento: Orcamento) => {
+    setSelectedOrcamentoParaPDF(orcamento);
+
+    setTimeout(() => {
+      gerarPDF(orcamento).finally(() => {
+        setSelectedOrcamentoParaPDF(null);
+      });
+    }, 100);
+  };
+
   const formatCurrency = useMemo(() => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -171,7 +186,7 @@ export function TabelaOrcamentos() {
 
   const handleDuplicar = async (orcamento: Orcamento) => {
     if (!user) {
-      showError('Você precisa estar logado para realizar esta ação.');
+      toast({ variant: 'destructive', title: 'Você precisa estar logado para realizar esta ação.'});
       return;
     }
     
@@ -190,7 +205,7 @@ export function TabelaOrcamentos() {
         await deleteDoc(doc(db, `users/${user.uid}/orcamentoJudicial`, id));
         
         toast({ title: 'Orçamento duplicado com sucesso!' });
-        await fetchOrcamentos(true); // Recarrega a lista
+        await fetchOrcamentos(true);
     } catch (err) {
         toast({ variant: 'destructive', title: 'Erro ao duplicar orçamento' });
         console.error(err);
@@ -253,8 +268,11 @@ export function TabelaOrcamentos() {
                     ))}
                   </div>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => handleEdit(orc.id)}>
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                   <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => handleGerarPDF(orc)} disabled={loadingPDF}>
+                     {loadingPDF ? <Loader2 className="h-4 w-4 animate-spin"/> : <FileText className="h-4 w-4 mr-2" />} PDF
+                  </Button>
+                   <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => handleEdit(orc.id)}>
                     <Pencil className="h-4 w-4 mr-2" /> Editar
                   </Button>
                    <Button size="sm" className="flex-1 rounded-full h-10" variant="outline" onClick={() => setSelectedOrcamento(orc)}>
@@ -262,7 +280,7 @@ export function TabelaOrcamentos() {
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="destructive" className="flex-1 rounded-full h-10" disabled={deletingId === orc.id}>
+                       <Button size="sm" variant="destructive" className="flex-1 rounded-full h-10" disabled={deletingId === orc.id}>
                         {deletingId === orc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                         Deletar
                       </Button>
@@ -306,6 +324,11 @@ export function TabelaOrcamentos() {
 
   return (
     <>
+      {selectedOrcamentoParaPDF && (
+        <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
+            <OrcamentoPDFTemplate orcamento={selectedOrcamentoParaPDF} />
+        </div>
+      )}
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableCaption>
@@ -339,6 +362,9 @@ export function TabelaOrcamentos() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => handleGerarPDF(orcamento)} disabled={loadingPDF}>
+                      {loadingPDF ? <Loader2 className="h-4 w-4 animate-spin"/> : <FileText className="h-4 w-4" />}
+                    </Button>
                     <Button variant="outline" size="icon" className="rounded-full" onClick={() => handleEdit(orcamento.id)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -389,3 +415,5 @@ export function TabelaOrcamentos() {
     </>
   );
 }
+
+    
