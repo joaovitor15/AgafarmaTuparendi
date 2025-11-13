@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { DevolucaoFiltro } from './DevolucaoFiltro';
-import { DevolucaoLista } from './DevolucaoLista';
-import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
 import type { Devolucao, StatusDevolucao } from '@/types';
-import { DevolucaoModal } from './DevolucaoModal';
 import { v4 as uuidv4 } from 'uuid';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
+import { DevolucaoFiltroDropdown } from './DevolucaoFiltroDropdown';
+import { DevolucaoLista } from './DevolucaoLista';
+import { DevolucaoModal } from './DevolucaoModal';
 
 
+// MOCK_DEVOLUCOES com mais variedade de status para teste
 const MOCK_DEVOLUCOES: Devolucao[] = [
   {
     id: '1',
@@ -25,13 +26,13 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
   },
   {
     id: '2',
-    notaFiscal: '123456',
-    dataRealizada: '2023-10-26',
-    distribuidora: 'Santa Cruz',
+    notaFiscal: '123457',
+    dataRealizada: '2023-10-28',
+    distribuidora: 'Panarello',
     produto: 'Dipirona 500mg',
     quantidade: 30,
     motivo: 'Excesso de estoque',
-    notaFiscalEntrada: 'NF-E 98765',
+    notaFiscalEntrada: 'NF-E 98766',
     status: 'aguardar_coleta',
     nfdNumero: 'NFD-555',
     nfdValor: 150.75,
@@ -64,27 +65,32 @@ const MOCK_DEVOLUCOES: Devolucao[] = [
     nfdValor: 250.0,
     dataColeta: '2023-09-20',
   },
+    {
+    id: '5',
+    notaFiscal: '101010',
+    dataRealizada: '2024-01-10',
+    distribuidora: 'Santa Cruz',
+    produto: 'Losartana 50mg',
+    quantidade: 10,
+    motivo: 'Pedido errado',
+    notaFiscalEntrada: 'NF-E 77788',
+    status: 'solicitacao_nfd',
+  },
 ];
 
 export function DevolucaoPanel() {
   const [devolucoes, setDevolucoes] = useState<Devolucao[]>(MOCK_DEVOLUCOES);
-  const [filtroStatus, setFiltroStatus] = useState<StatusDevolucao[]>([]);
+  const [filtros, setFiltros] = useState<StatusDevolucao[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [devolucaoEmEdicao, setDevolucaoEmEdicao] = useState<Devolucao | null>(null);
 
   const devolucoesFiltradas = useMemo(() => {
-    if (filtroStatus.length === 0) {
+    if (filtros.length === 0) {
       return devolucoes;
     }
-    return devolucoes.filter((d) => filtroStatus.includes(d.status));
-  }, [devolucoes, filtroStatus]);
+    return devolucoes.filter((d) => filtros.includes(d.status));
+  }, [devolucoes, filtros]);
 
-  const devolucoesAgrupadas = useMemo(() => {
-    return devolucoesFiltradas.reduce((acc, dev) => {
-      (acc[dev.notaFiscal] = acc[dev.notaFiscal] || []).push(dev);
-      return acc;
-    }, {} as Record<string, Devolucao[]>);
-  }, [devolucoesFiltradas]);
 
   const handleAbrirModal = (devolucao?: Devolucao | null) => {
     setDevolucaoEmEdicao(devolucao || null);
@@ -102,6 +108,11 @@ export function DevolucaoPanel() {
     setModalAberto(false);
   };
 
+  const handleUpdateDevolucao = (devolucaoAtualizada: Devolucao) => {
+    setDevolucoes(prev => prev.map(d => d.id === devolucaoAtualizada.id ? devolucaoAtualizada : d));
+  };
+
+
   const handleExcluirDevolucao = (id: string) => {
      setDevolucoes(devolucoes.filter((d) => d.id !== id));
   };
@@ -109,30 +120,23 @@ export function DevolucaoPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight">Gestão de Devoluções</h1>
-          <Button onClick={() => handleAbrirModal(null)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova Devolução
-          </Button>
+          <div className="flex items-center gap-2">
+            <DevolucaoFiltroDropdown
+              filtrosAtuais={filtros}
+              onFiltroChange={setFiltros}
+            />
+            <Button onClick={() => handleAbrirModal(null)} className='w-full sm:w-auto'>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Nova Devolução
+            </Button>
+          </div>
         </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtro por Status</CardTitle>
-          <CardDescription>Selecione um ou mais status para filtrar a lista de devoluções.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DevolucaoFiltro
-            filtroStatus={filtroStatus}
-            onFiltroChange={setFiltroStatus}
-          />
-        </CardContent>
-      </Card>
-      
       <DevolucaoLista
-        devolucoesAgrupadas={devolucoesAgrupadas}
-        onEditar={handleAbrirModal}
+        devolucoes={devolucoesFiltradas}
+        onUpdate={handleUpdateDevolucao}
         onExcluir={handleExcluirDevolucao}
       />
 
