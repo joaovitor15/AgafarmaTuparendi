@@ -14,7 +14,7 @@ interface OrcamentoPDFTemplateProps {
 }
 
 export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
-  const { estabelecimento, paciente, orcamento: orcamentoTextos, assinatura, rodape } = PDF_CONFIG.DOCUMENTO.TEXTOS;
+  const { estabelecimento, paciente, orcamento: orcamentoTextos, assinatura } = PDF_CONFIG.DOCUMENTO.TEXTOS;
 
   // Calcular totais
   let totalMensal = 0;
@@ -132,12 +132,12 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
       </div>
       
       {/* Seção de Assinatura */}
-      <div style={{ flexShrink: 0, marginTop: 'auto', paddingTop: '30pt' }}>
+      <div style={{ flexShrink: 0, marginTop: '20px', paddingTop: '10pt' }}>
           <p style={{ fontSize: '11px', textAlign: 'right', marginBottom: '8pt' }} >
             {assinatura.cidade}, {dataFormatada}
           </p>
 
-          <div style={{ height: '60pt' }}></div>
+          <div style={{ height: '80pt' }}></div>
           
           <p style={{ fontSize: '11px', textAlign: 'center', marginBottom: '4pt', lineHeight: 1 }} >
             {assinatura.linha}
@@ -145,13 +145,6 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
           <p style={{ fontSize: '11px', fontWeight: 'bold', textAlign: 'center', margin: 0 }} >
             {assinatura.nomeFarmacia}
           </p>
-      </div>
-
-      {/* Rodapé Fixo */}
-      <div style={{ position: 'absolute', bottom: '35px', left: 0, right: 0, padding: '0 72px' }}>
-        <p style={{ fontSize: '10px', textAlign: 'center', margin: '5px 0' }} >
-          {rodape.texto}
-        </p>
       </div>
     </div>
   );
