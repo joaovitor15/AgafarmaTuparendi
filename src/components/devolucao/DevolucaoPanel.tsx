@@ -2,69 +2,44 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import type { Devolucao, StatusDevolucao } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { DevolucaoFiltroDropdown } from './DevolucaoFiltroDropdown';
 import { DevolucaoLista } from './DevolucaoLista';
 import { DevolucaoModal } from './DevolucaoModal';
-
-// MOCK_DEVOLUCOES com mais variedade de status para teste
-const MOCK_DEVOLUCOES: Devolucao[] = [
-  {
-    id: '2',
-    notaFiscalEntrada: 'NF-E 98766',
-    dataRealizada: '2023-10-28',
-    distribuidora: 'Panarello',
-    produtos: [{ nome: 'Dipirona 500mg', quantidade: 30 }],
-    motivo: 'Excesso de estoque',
-    status: 'aguardar_coleta',
-    nfdNumero: 'NFD-555',
-    nfdValor: 150.75,
-  },
-  {
-    id: '3',
-    notaFiscalEntrada: 'NF-E 11223',
-    dataRealizada: '2023-11-01',
-    distribuidora: 'Panarello',
-    produtos: [{ nome: 'Ibuprofeno 400mg', quantidade: 20 }],
-    motivo: 'Produto avariado',
-    status: 'aguardando_credito',
-    nfdNumero: 'NFD-777',
-    nfdValor: 90.0,
-    dataColeta: '2023-11-05',
-  },
-  {
-    id: '4',
-    notaFiscalEntrada: 'NF-E 44556',
-    dataRealizada: '2023-09-15',
-    distribuidora: 'Gam',
-    produtos: [{ nome: 'Vitamina C', quantidade: 100 }],
-    motivo: 'Vencido',
-    status: 'devolucao_finalizada',
-    nfdNumero: 'NFD-888',
-    nfdValor: 250.0,
-    dataColeta: '2023-09-20',
-  },
-    {
-    id: '5',
-    notaFiscalEntrada: 'NF-E 77788',
-    dataRealizada: '2024-01-10',
-    distribuidora: 'Santa Cruz',
-    produtos: [{ nome: 'Losartana 50mg', quantidade: 10 }],
-    motivo: 'Pedido errado',
-    status: 'solicitacao_nfd',
-  },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { useCollection } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { addDevolucao, updateDevolucao, deleteDevolucao } from '@/services/devolucaoService';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '../ui/skeleton';
+import { EmptyState } from '../ui/empty-state';
 
 export function DevolucaoPanel() {
-  const [devolucoes, setDevolucoes] = useState<Devolucao[]>(MOCK_DEVOLUCOES);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const devolucoesQuery = useMemo(() => {
+    if (!user) return null;
+    return collection(db, 'users', user.uid, 'devolucao');
+  }, [user]);
+
+  const { data: devolucoes = [], isLoading } = useCollection<Devolucao>(devolucoesQuery);
+
   const [filtros, setFiltros] = useState<StatusDevolucao[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [idParaExpandir, setIdParaExpandir] = useState<string | null>(null);
 
   const devolucoesFiltradas = useMemo(() => {
-    const devolucoesOrdenadas = [...devolucoes].sort((a, b) => new Date(b.dataRealizada).getTime() - new Date(a.dataRealizada).getTime());
+    const devolucoesOrdenadas = [...(devolucoes || [])].sort((a, b) => {
+        // Finalizadas vão para o fim
+        if (a.status === 'devolucao_finalizada' && b.status !== 'devolucao_finalizada') return 1;
+        if (a.status !== 'devolucao_finalizada' && b.status === 'devolucao_finalizada') return -1;
+        // Ordena pela data mais recente
+        return new Date(b.dataRealizada).getTime() - new Date(a.dataRealizada).getTime()
+    });
+
     if (filtros.length === 0) {
       return devolucoesOrdenadas;
     }
@@ -72,16 +47,17 @@ export function DevolucaoPanel() {
   }, [devolucoes, filtros]);
 
 
-  const handleSalvarDevolucao = (dadosDevolucao: Omit<Devolucao, 'id'>) => {
-    const novoId = uuidv4();
-    const novaDevolucao: Devolucao = {
-      id: novoId,
-      ...dadosDevolucao
-    };
-
-    setDevolucoes(prev => [novaDevolucao, ...prev]);
-    setIdParaExpandir(novoId); // Marcar este ID para expandir
-    setModalAberto(false);
+  const handleSalvarDevolucao = async (dadosDevolucao: Omit<Devolucao, 'id'>) => {
+    if (!user) return;
+    try {
+        const novoId = await addDevolucao(user.uid, dadosDevolucao);
+        setIdParaExpandir(novoId);
+        setModalAberto(false);
+        toast({ title: "Devolução criada com sucesso!" });
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: "Erro ao criar devolução." });
+    }
   };
   
   useEffect(() => {
@@ -91,14 +67,65 @@ export function DevolucaoPanel() {
     }
   }, [idParaExpandir]);
 
-  const handleUpdateDevolucao = (devolucaoAtualizada: Devolucao) => {
-    setDevolucoes(prev => prev.map(d => d.id === devolucaoAtualizada.id ? devolucaoAtualizada : d));
+  const handleUpdateDevolucao = async (devolucaoAtualizada: Devolucao) => {
+    if (!user) return;
+    try {
+        await updateDevolucao(user.uid, devolucaoAtualizada.id, devolucaoAtualizada);
+        toast({ title: "Devolução atualizada!" });
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: "Erro ao atualizar devolução." });
+    }
   };
 
 
-  const handleExcluirDevolucao = (id: string) => {
-     setDevolucoes(devolucoes.filter((d) => d.id !== id));
+  const handleExcluirDevolucao = async (id: string) => {
+    if (!user) return;
+    try {
+        await deleteDevolucao(user.uid, id);
+        toast({ title: "Devolução cancelada com sucesso." });
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: "Erro ao cancelar devolução." });
+    }
   };
+
+  const renderContent = () => {
+    if (isLoading) {
+        return (
+            <div className="space-y-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+            </div>
+        );
+    }
+
+    if (devolucoes.length === 0) {
+        return (
+             <div className='py-12'>
+                <EmptyState
+                    icon={<div className="text-4xl">📦</div>}
+                    title="Nenhuma devolução em andamento"
+                    description="Crie uma nova devolução para começar a gerenciar os processos."
+                    action={{
+                        label: 'Criar Primeira Devolução',
+                        onClick: () => setModalAberto(true),
+                    }}
+                />
+            </div>
+        )
+    }
+
+    return (
+        <DevolucaoLista
+            devolucoes={devolucoesFiltradas}
+            onUpdate={handleUpdateDevolucao}
+            onExcluir={handleExcluirDevolucao}
+            idParaExpandir={idParaExpandir}
+        />
+    )
+  }
 
 
   return (
@@ -110,19 +137,14 @@ export function DevolucaoPanel() {
               filtrosAtuais={filtros}
               onFiltroChange={setFiltros}
             />
-            <Button onClick={() => setModalAberto(true)} className='w-full sm:w-auto'>
-              <PlusCircle className="mr-2 h-4 w-4" />
+            <Button onClick={() => setModalAberto(true)} className='w-full sm:w-auto' disabled={isLoading}>
+              {isLoading ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Nova Devolução
             </Button>
           </div>
         </div>
       
-      <DevolucaoLista
-        devolucoes={devolucoesFiltradas}
-        onUpdate={handleUpdateDevolucao}
-        onExcluir={handleExcluirDevolucao}
-        idParaExpandir={idParaExpandir}
-      />
+      {renderContent()}
 
       {modalAberto && (
          <DevolucaoModal

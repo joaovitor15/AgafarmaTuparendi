@@ -199,6 +199,11 @@ export function DevolucaoModal({
             {errors.produtos_geral && <p className="text-xs text-destructive">{errors.produtos_geral}</p>}
         </div>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="protocolo">Protocolo (Opcional)</Label>
+        <Input id="protocolo" name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
+      </div>
     </>
   );
 

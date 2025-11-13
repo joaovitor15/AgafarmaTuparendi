@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Query,
   onSnapshot,
@@ -20,7 +20,7 @@ export type WithId<T> = T & { id: string };
  * @template T Type of the document data.
  */
 export interface UseCollectionResult<T> {
-  data: WithId<T>[] | null; // Document data with ID, or null.
+  data: WithId<T>[]; // Document data with ID, or null.
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
@@ -52,18 +52,20 @@ export interface InternalQuery extends Query<DocumentData> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+    targetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>))  | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
-  type StateDataType = ResultItemType[] | null;
+  type StateDataType = ResultItemType[];
 
-  const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [data, setData] = useState<StateDataType>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+
+  const memoizedTargetRefOrQuery = useMemo(() => targetRefOrQuery, [targetRefOrQuery]);
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
-      setData(null);
+      setData([]);
       setIsLoading(false);
       setError(null);
       return;
@@ -72,7 +74,6 @@ export function useCollection<T = any>(
     setIsLoading(true);
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -97,7 +98,7 @@ export function useCollection<T = any>(
         })
 
         setError(contextualError)
-        setData(null)
+        setData([])
         setIsLoading(false)
 
         // trigger global error propagation
@@ -106,9 +107,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
-  }
+  }, [memoizedTargetRefOrQuery]);
+
   return { data, isLoading, error };
 }

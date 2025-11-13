@@ -6,7 +6,7 @@ import { statusConfig, getEtapa, proximoStatus } from './statusConfig';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
-import { AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Truck } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -34,7 +34,7 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
     const handleProximaEtapa = () => {
         const proximo = proximoStatus(devolucao.status);
         if (proximo) {
-            onUpdate({ ...formData, status: proximo } as Devolucao);
+            onUpdate({ ...devolucao, ...formData, status: proximo } as Devolucao);
             if (proximo === 'devolucao_finalizada') {
                 setIsExpanded(false);
             }
@@ -63,7 +63,7 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
     };
 
     const formatValorParaInput = (value: number | undefined): string => {
-        if (!value) return '';
+        if (value === undefined || value === null || value === 0) return '';
         return new Intl.NumberFormat('pt-BR', {
             minimumFractionDigits: 2,
         }).format(value);
@@ -71,11 +71,11 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
 
     const renderEtapa1ReadOnly = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <InfoItem label="Data da Solicitação" value={new Date(formData.dataRealizada).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} />
-             <InfoItem label="Distribuidora" value={formData.distribuidora} />
-             <InfoItem label="Motivo" value={formData.motivo} />
-             <InfoItem label="NF de Entrada" value={formData.notaFiscalEntrada} />
-             {formData.protocolo && <InfoItem label="Protocolo" value={formData.protocolo} />}
+             <InfoItem label="Data da Solicitação" value={new Date(devolucao.dataRealizada).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} />
+             <InfoItem label="Distribuidora" value={devolucao.distribuidora} />
+             <InfoItem label="Motivo" value={devolucao.motivo} />
+             <InfoItem label="NF de Entrada" value={devolucao.notaFiscalEntrada} />
+             {devolucao.protocolo && <InfoItem label="Protocolo" value={devolucao.protocolo} />}
         </div>
     );
     
@@ -99,6 +99,10 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
                     </AlertDescription>
                 </Alert>
             )}
+            <div className="space-y-2">
+                <Label htmlFor={`protocolo-${devolucao.id}`}>Protocolo</Label>
+                <Input id={`protocolo-${devolucao.id}`} name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
+            </div>
             <div className="space-y-2">
                 <Label htmlFor={`nfdNumero-${devolucao.id}`}>Número NFD</Label>
                 <Input id={`nfdNumero-${devolucao.id}`} name="nfdNumero" value={formData.nfdNumero || ''} onChange={handleInputChange} onFocus={() => setShowAlertaNFD(true)} onBlur={() => setShowAlertaNFD(false)} />
@@ -142,7 +146,15 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
             case 'aguardar_coleta':
                 return renderEtapa3Inputs();
             case 'aguardando_credito':
-                 return renderEtapaFinalizada(); // This is the step before it's finalized
+                 return (
+                    <div className='flex flex-col items-center text-center gap-4 py-4'>
+                        <Truck className='h-12 w-12 text-sky-500' />
+                        <div>
+                            <p className='font-semibold'>Coleta Efetuada</p>
+                            <p className='text-sm text-muted-foreground'>O produto foi coletado. Aguarde o crédito do valor.</p>
+                        </div>
+                    </div>
+                );
             case 'devolucao_finalizada':
                 return renderEtapaFinalizada();
             default:
@@ -186,6 +198,7 @@ export function DevolucaoCard({ devolucao, onUpdate, onExcluir, iniciaExpandido 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InfoItem label="NFD Número" value={devolucao.nfdNumero || 'N/A'} />
                         <InfoItem label="Valor NFD" value={devolucao.nfdValor ? `R$ ${devolucao.nfdValor.toFixed(2)}` : 'N/A'} />
+                        <InfoItem label="Protocolo" value={devolucao.protocolo || 'N/A'} />
                     </div>
                 </EtapaHistorico>
             );
