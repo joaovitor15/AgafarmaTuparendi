@@ -27,10 +27,10 @@ export const statusConfig: Record<StatusDevolucao, {
     icon: Banknote,
   },
   devolucao_finalizada: {
-    label: 'Coleta Efetuada',
-    description: 'Aguarde o Crédito.',
+    label: 'Devolução Finalizada',
+    description: 'O crédito foi recebido e o processo concluído.',
     badgeClassName: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    icon: Truck,
+    icon: CheckCircle2,
   },
 };
 
