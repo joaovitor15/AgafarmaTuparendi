@@ -85,15 +85,21 @@ export function useGerarVencidosPDF() {
       `R$ ${item.precoUnitario.toFixed(2)}`,
       `R$ ${(item.quantidade * item.precoUnitario).toFixed(2)}`
     ]);
+    
+    const totalGeral = vencidos.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0);
+    const foot = [
+        ['', '', '', '', '', '', '', { content: 'Total Geral', styles: { fontStyle: 'bold' } }, { content: `R$ ${totalGeral.toFixed(2)}`, styles: { fontStyle: 'bold' } }],
+    ];
 
     doc.autoTable({
         startY: (destinatario ? 90 : 50),
         head: head,
         body: body,
+        foot: foot,
         theme: 'striped',
-        headStyles: { textColor: [0, 0, 0], lineWidth: 0.1 },
+        headStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
+        footStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
         columnStyles: {
-            // Defina as larguras como achar melhor
             0: { cellWidth: 20 },
             1: { cellWidth: 'auto' },
             2: { cellWidth: 15 },
@@ -130,7 +136,7 @@ export function useGerarVencidosPDF() {
         head: head,
         body: body,
         theme: 'striped',
-        headStyles: { textColor: [0, 0, 0], lineWidth: 0.1 },
+        headStyles: { textColor: [0, 0, 0], fillColor: [255, 255, 255], lineWidth: 0.1 },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY || doc.internal.pageSize.getHeight() - 50;
