@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { formatCpf } from '@/lib/masks';
 
 interface OrcamentoFormProps {
-  onSave: (orcamento: Omit<Orcamento, 'id'>) => Promise<void>;
+  onSave: (orcamento: Omit<Orcamento, 'id' | 'dataCriacao' | 'dataUltimaEdicao' | 'status' | 'usuarioId'>) => Promise<void>;
   initialData?: Omit<Orcamento, 'id'>;
   isEditing?: boolean;
 }
@@ -64,7 +64,7 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
     const orcamentoData = {
       paciente: {
         ...paciente,
-        cpf: paciente.cpf?.replace(/\D/g, '') || '', // Salva somente números
+        cpf: paciente.cpf?.replace(/\D/g, '') || '',
       },
       medicamentos
     };
@@ -101,6 +101,29 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
 
   const onCancel = () => {
     router.push('/dashboard/orcamento-judicial');
+  }
+
+  const handleCurrencyChange = (id: string, value: string) => {
+    let numericValue = value.replace(/\D/g, '');
+    if (!numericValue) {
+      handleMedicamentoChange(id, 'valorUnitario', 0);
+      return;
+    }
+  
+    // Pad with zeros to the left until we have 3 digits
+    numericValue = numericValue.padStart(3, '0');
+  
+    const reais = numericValue.slice(0, -2);
+    const centavos = numericValue.slice(-2);
+    const formattedValue = `${reais},${centavos}`;
+  
+    handleMedicamentoChange(id, 'valorUnitario', parseFloat(formattedValue.replace(',', '.')));
+  };
+
+  const formatCurrencyForDisplay = (value: number) => {
+    if (!value || value === 0) return '';
+    const [reais, centavos] = value.toFixed(2).split('.');
+    return `${reais},${centavos || '00'}`;
   }
   
   return (
@@ -171,13 +194,11 @@ export function OrcamentoForm({ onSave, initialData, isEditing = false }: Orcame
                   <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
                   <Input
                     id={`valor-item-${med.id}`}
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
                     placeholder="0,00"
-                    value={med.valorUnitario}
-                    onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)}
-                    className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')}
+                    value={formatCurrencyForDisplay(med.valorUnitario)}
+                    onChange={(e) => handleCurrencyChange(med.id, e.target.value)}
+                    className={cn(errors[`med_valor_${med.id}`] && 'border-destructive', 'text-right')}
                     autoComplete="off"
                     data-form-type="other"
                     data-1p-ignore="true"
