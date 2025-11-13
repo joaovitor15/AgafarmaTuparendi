@@ -10,10 +10,12 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Orcamento, Medicamento } from '@/types/orcamento';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { formatCpf } from '@/lib/masks';
 
 interface OrcamentoFormProps {
   onSave: (orcamento: Omit<Orcamento, 'id'>) => void;
   initialData?: Omit<Orcamento, 'id'>;
+  isEditing?: boolean;
 }
 
 const initialMedicamento: Omit<Medicamento, 'id'> = {
@@ -24,7 +26,7 @@ const initialMedicamento: Omit<Medicamento, 'id'> = {
   valorUnitario: 0,
 };
 
-export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
+export function OrcamentoForm({ onSave, initialData, isEditing = false }: OrcamentoFormProps) {
   const router = useRouter();
   const [paciente, setPaciente] = useState(initialData?.paciente || { identificador: '', cpf: '' });
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>(
@@ -59,11 +61,19 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
     if (!validate()) return;
     
     setIsSaving(true);
-    // Simula uma chamada de API
-    setTimeout(() => {
-        onSave({ paciente, medicamentos });
-        setIsSaving(false);
-    }, 1000);
+    const orcamentoData = {
+      paciente: {
+        ...paciente,
+        cpf: paciente.cpf?.replace(/\D/g, '') || '', // Salva somente números
+      },
+      medicamentos
+    };
+
+    onSave(orcamentoData);
+    // O redirecionamento e toast são controlados pela página pai
+    // setTimeout(() => {
+    //     setIsSaving(false);
+    // }, 1000);
   };
 
   const handleAddMedicamento = () => {
@@ -79,7 +89,11 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
   };
 
   const handlePacienteChange = (field: 'identificador' | 'cpf', value: string) => {
-    setPaciente(prev => ({ ...prev, [field]: value }));
+    if (field === 'cpf') {
+      setPaciente(prev => ({ ...prev, [field]: formatCpf(value) }));
+    } else {
+      setPaciente(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleClear = () => {
@@ -122,6 +136,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                 placeholder="000.000.000-00"
                 value={paciente.cpf}
                 onChange={e => handlePacienteChange('cpf', e.target.value)}
+                maxLength={14}
                 autoComplete="off"
                 data-lpignore="true"
                 data-form-type="other"
@@ -157,7 +172,20 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                 </div>
                  <div className="md:col-span-2 space-y-1">
                   <Label htmlFor={`valor-item-${med.id}`}>Valor Unit.</Label>
-                  <Input id={`valor-item-${med.id}`} type="number" step="0.01" min="0" placeholder="0,00" value={med.valorUnitario} onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)} className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')} autoComplete="off" data-form-type="other" data-1p-ignore="true" />
+                  <Input
+                    id={`valor-item-${med.id}`}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    value={med.valorUnitario}
+                    onChange={e => handleMedicamentoChange(med.id, 'valorUnitario', parseFloat(e.target.value) || 0)}
+                    className={cn(errors[`med_valor_${med.id}`] && 'border-destructive')}
+                    autoComplete="off"
+                    data-form-type="other"
+                    data-1p-ignore="true"
+                    spellCheck="false"
+                  />
                 </div>
                 <div className="md:col-span-1 flex items-end justify-end">
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicamento(med.id)} className="text-destructive hover:bg-destructive/10 h-10 w-10">
@@ -185,7 +213,7 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
             <CardContent className="flex flex-wrap gap-2">
                  <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {'Salvar Orçamento'}
+                    {isEditing ? 'Salvar Alterações' : 'Salvar Orçamento'}
                 </Button>
                 
                 <Button variant="ghost" onClick={onCancel} className="text-destructive hover:text-destructive-foreground hover:bg-destructive">
@@ -193,10 +221,12 @@ export function OrcamentoForm({ onSave, initialData }: OrcamentoFormProps) {
                     Cancelar
                 </Button>
                 
-                <Button variant="ghost" onClick={handleClear} className="text-muted-foreground">
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Limpar Formulário
-                </Button>
+                {!isEditing && (
+                  <Button variant="ghost" onClick={handleClear} className="text-muted-foreground">
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Limpar Formulário
+                  </Button>
+                )}
             </CardContent>
         </Card>
     </form>
