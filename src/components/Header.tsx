@@ -5,9 +5,8 @@ import messages from '@/locales/messages.pt-br.json';
 import { AgafarmaLogo } from './AgafarmaLogo';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { LogOut, Loader2, Menu } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LogoutIcon } from './icons';
 import { MobileMenu } from './MobileMenu';
 
 export function Header() {
@@ -25,7 +24,7 @@ export function Header() {
   return (
     <header className={cn(
       "flex h-16 w-full flex-shrink-0 items-center justify-between px-4",
-      "bg-card border-b"
+      "bg-card border-b z-10"
     )}>
       <div className="flex items-center gap-3">
         <div className="md:hidden">
@@ -44,17 +43,16 @@ export function Header() {
             <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
             <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
           </Avatar>
-           <button 
+           <Button
              onClick={signOutUser} 
              disabled={loading} 
-             className={cn(
-              "hidden md:flex items-center justify-center h-10 w-10 rounded-full bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20",
-              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-             )}
+             variant="outline"
+             size="icon"
+             className="rounded-full hidden md:inline-flex"
              aria-label="Sair"
            >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogoutIcon className="h-5 w-5" />}
-           </button>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+           </Button>
         </div>
       )}
     </header>
