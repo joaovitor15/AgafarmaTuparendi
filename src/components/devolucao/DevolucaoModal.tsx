@@ -18,7 +18,6 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, Dr
 import { ScrollArea } from '../ui/scroll-area';
 import { Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type DevolucaoFormData = Omit<Devolucao, 'id' | 'status' | 'dataRealizada'> & {
     produtos: (DevolucaoProduto & { tempId: string })[];
@@ -59,10 +58,6 @@ export function DevolucaoModal({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: 'distribuidora' | 'motivo', value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
   const handleProdutoChange = (tempId: string, field: 'nome' | 'quantidade', value: string | number) => {
     setFormData(prev => ({
         ...prev,
@@ -146,18 +141,7 @@ export function DevolucaoModal({
       
       <div className="space-y-2">
         <Label htmlFor="motivo">Motivo*</Label>
-        <Select name='motivo' onValueChange={(v) => handleSelectChange('motivo', v)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o motivo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Validade">Validade</SelectItem>
-            <SelectItem value="Lote Ruim">Lote Ruim</SelectItem>
-            <SelectItem value="Dano na Embalagem">Dano na Embalagem</SelectItem>
-            <SelectItem value="Produto Incorreto">Produto Incorreto</SelectItem>
-            <SelectItem value="Outro">Outro</SelectItem>
-          </SelectContent>
-        </Select>
+        <Input id="motivo" name="motivo" placeholder="Motivo da devolução" value={formData.motivo || ''} onChange={handleInputChange} />
         {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
       </div>
 
@@ -198,11 +182,6 @@ export function DevolucaoModal({
             </Button>
             {errors.produtos_geral && <p className="text-xs text-destructive">{errors.produtos_geral}</p>}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="protocolo">Protocolo (Opcional)</Label>
-        <Input id="protocolo" name="protocolo" value={formData.protocolo || ''} onChange={handleInputChange} />
       </div>
     </>
   );
