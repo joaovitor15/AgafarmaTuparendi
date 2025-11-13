@@ -21,15 +21,23 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
   let totalTratamento = 0;
   let pDur = -1;
   let durIguais = true;
+  let algumTratamentoLongo = false;
 
   orcamento.medicamentos.forEach((med) => {
     const custoMensal = med.valorUnitario * med.quantidadeMensal;
     totalMensal += custoMensal;
     const custoTotal = custoMensal * med.quantidadeTratamento;
     totalTratamento += custoTotal;
+    
+    if (med.quantidadeTratamento > 1) {
+      algumTratamentoLongo = true;
+    }
 
-    if (pDur === -1) pDur = med.quantidadeTratamento;
-    else if (pDur !== med.quantidadeTratamento) durIguais = false;
+    if (pDur === -1) {
+      pDur = med.quantidadeTratamento;
+    } else if (pDur !== med.quantidadeTratamento) {
+      durIguais = false;
+    }
   });
 
   const dataAtual = new Date();
@@ -47,9 +55,11 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
         margin: '0 auto',
         color: '#000',
         background: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <div>
+      <div style={{ flexGrow: 1 }}>
         {/* Título Principal */}
         <p style={{ fontSize: '18px', fontWeight: 'bold', textAlign: 'center', marginBottom: '9px' }} >
           {orcamentoTextos.tituloPrincipal}
@@ -77,24 +87,26 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
           {orcamentoTextos.medicamentos.titulo}
         </p>
         {orcamento.medicamentos.map((med, idx) => {
-          const unidadeBase = determinarUnidadePeloNome(med.nome);
-          const unidadePlural = unidadeBase + (med.quantidadeMensal > 1 ? 's' : '');
+          const unidade = determinarUnidadePeloNome(med.nome, med.quantidadeMensal);
           const custoMensal = med.valorUnitario * med.quantidadeMensal;
-          const custoTotal = custoMensal * med.quantidadeTratamento;
+          const custoTotalTratamento = custoMensal * med.quantidadeTratamento;
+
           let linhaTexto = `${idx + 1}. ${med.nome}${
             med.principioAtivo ? ` (${med.principioAtivo})` : ''
-          }, ${orcamentoTextos.medicamentos.quantidade} ${med.quantidadeMensal} ${unidadePlural} ${
+          }, ${orcamentoTextos.medicamentos.quantidade} ${med.quantidadeMensal} ${unidade}, ${
             orcamentoTextos.medicamentos.porMes
           }, ${orcamentoTextos.medicamentos.valorUnitario} ${formatarMoeda(
             med.valorUnitario
           )}, ${
             orcamentoTextos.medicamentos.custoMensal
           } ${formatarMoeda(custoMensal)}`;
+          
           if (med.quantidadeTratamento > 1) {
             linhaTexto += `, ${
               orcamentoTextos.medicamentos.custoTratamento
-            } ${med.quantidadeTratamento} meses: ${formatarMoeda(custoTotal)}`;
+            } ${med.quantidadeTratamento} meses: ${formatarMoeda(custoTotalTratamento)}`;
           }
+
           return (
             <p
               key={med.id || med.nome}
@@ -115,7 +127,7 @@ export function OrcamentoPDFTemplate({ orcamento }: OrcamentoPDFTemplateProps) {
         <p style={{ fontSize: '11px', marginBottom: '5px' }}>
           {orcamentoTextos.totais.totalMensal} {formatarMoeda(totalMensal)}
         </p>
-        {totalTratamento > totalMensal && (
+        {algumTratamentoLongo && (
           <p style={{ fontSize: '11px', marginBottom: '5px' }}>
             {durIguais
               ? `${orcamentoTextos.totais.totalTratamentoFixo} ${pDur} ${

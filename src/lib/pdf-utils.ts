@@ -20,21 +20,24 @@ export function formatarCPF(cpf: string | null | undefined): string {
 /**
 
 Determina unidade pelo nome do medicamento */
-export function determinarUnidadePeloNome(nomeMedicamento: string): string {
-  if (!nomeMedicamento) return 'unidade';
-  const nomeLower = nomeMedicamento.toLowerCase();
+export function determinarUnidadePeloNome(nomeMedicamento: string, quantidade: number): string {
+  if (!nomeMedicamento) return quantidade > 1 ? 'unidades' : 'unidade';
 
+  const nomeLower = nomeMedicamento.toLowerCase();
+  
   // Palavras-chave para "caixa"
-  if (nomeLower.includes(' drg')) {
-    return 'caixa';
+  const caixaKeywords = ['cp', 'cpr', 'comp'];
+  if (caixaKeywords.some(keyword => nomeLower.includes(keyword))) {
+    return quantidade > 1 ? 'caixas' : 'caixa';
   }
 
   // Palavras-chave para "frasco"
-  if (nomeLower.includes(' xarope')) {
-    return 'frasco';
+  const frascoKeywords = ['ml', 'mg/ml', 'frasco', 'xarope', 'xarop'];
+  if (frascoKeywords.some(keyword => nomeLower.includes(keyword))) {
+    return quantidade > 1 ? 'frascos' : 'frasco';
   }
 
-  return 'unidade';
+  return quantidade > 1 ? 'unidades' : 'unidade';
 }
 
 /**
@@ -63,5 +66,3 @@ export function formatarData(data: Date): string {
     day: 'numeric',
   }).format(data);
 }
-
-    
